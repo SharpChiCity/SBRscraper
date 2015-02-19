@@ -32,7 +32,8 @@ def soup_url(type_of_line, tdate = str(date.today()).replace('-','')):
     url = 'http://www.sportsbookreview.com/betting-odds/nba-basketball/' + url_addon + '?date=' + tdate
     now = datetime.datetime.now()
     raw_data = requests.get(url)
-    soup = BeautifulSoup(raw_data.text)
+    soup_big = BeautifulSoup(raw_data.text, 'html.parser')
+    soup = soup_big.find_all('div', id='OddsGridModule_3')[0]
     timestamp = time.strftime("%H:%M:%S")
     return soup, timestamp
 
