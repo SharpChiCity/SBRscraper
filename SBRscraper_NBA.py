@@ -33,7 +33,7 @@ def soup_url(type_of_line, tdate = str(date.today()).replace('-','')):
     now = datetime.datetime.now()
     raw_data = requests.get(url)
     soup_big = BeautifulSoup(raw_data.text, 'html.parser')
-    soup = soup_big.find_all('div', id='OddsGridModule_3')[0]
+    soup = soup_big.find_all('div', id='OddsGridModule_5')[0]
     timestamp = time.strftime("%H:%M:%S")
     return soup, timestamp
 
