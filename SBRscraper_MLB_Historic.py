@@ -386,7 +386,11 @@ if __name__ == '__main__':
             z = str(z+1)
         lookupdate = season+'03'+z
         print lookupdate
-        main(lookupdate)
+        ## To account for any days without games  
+        try:
+            main(lookupdate)
+        except IndexError:
+            pass
 
     # April has 30 days
     for z in range(30):
@@ -396,7 +400,11 @@ if __name__ == '__main__':
             z = str(z+1)
         lookupdate = season+'04'+z
         print lookupdate
-        main(lookupdate)
+        ## To account for any days without games  
+        try:
+            main(lookupdate)
+        except IndexError:
+            pass
 
     # May has 31 days
     for z in range(31):
@@ -406,7 +414,11 @@ if __name__ == '__main__':
             z = str(z+1)
         lookupdate = season+'05'+z
         print lookupdate
-        main(lookupdate)
+        ## To account for any days without games  
+        try:
+            main(lookupdate)
+        except IndexError:
+            pass
 
     # June has 30 days
     for z in range(30):
@@ -416,7 +428,11 @@ if __name__ == '__main__':
             z = str(z+1)
         lookupdate = season+'06'+z
         print lookupdate
-        main(lookupdate)
+        ## To account for any days without games  
+        try:
+            main(lookupdate)
+        except IndexError:
+            pass
 
     # July has 31 days
     for z in range(31):
@@ -426,7 +442,11 @@ if __name__ == '__main__':
             z = str(z+1)
         lookupdate = season+'07'+z
         print lookupdate
-        main(lookupdate)
+        ## To account for any days without games  
+        try:
+            main(lookupdate)
+        except IndexError:
+            pass
 
     # August has 31 days
     for z in range(31):
@@ -436,7 +456,11 @@ if __name__ == '__main__':
             z = str(z+1)
         lookupdate = season+'10'+z
         print lookupdate
-        main(lookupdate)
+        ## To account for any days without games  
+        try:
+            main(lookupdate)
+        except IndexError:
+            pass
 
     # September has 30 days	
     for z in range(30):
@@ -446,14 +470,22 @@ if __name__ == '__main__':
             z = str(z+1)
         lookupdate = season+'09'+z
         print lookupdate
-        main(lookupdate)
+        ## To account for any days without games  
+        try:
+            main(lookupdate)
+        except IndexError:
+            pass
 
     # October has 31 days	
-    for z in range(10):
+    for z in range(9):
         if len(str(z+1)) == 1:
             z = '0' + str(z+1)
         else:
             z = str(z+1)
         lookupdate = season+'10'+z
         print lookupdate
-        main(lookupdate)
+        ## To account for any days without games  
+        try:
+            main(lookupdate)
+        except IndexError:
+            pass
