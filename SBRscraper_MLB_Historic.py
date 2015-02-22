@@ -6,6 +6,10 @@ import datetime
 from datetime import date
 import time
 from pandas import DataFrame
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+import re
+import os
 
 def connectTor():
 ## Connect to Tor for privacy purposes
@@ -13,48 +17,150 @@ def connectTor():
     socket.socket = socks.socksocket
     print "connected to Tor!"
 
-def soup_url(type_of_line, tdate = str(date.today()).replace('-','')):
+def soup_url(type_of_line, tdate = str(date.today()).replace('-',''), driver = ''):
 ## get html code for odds based on desired line type and date
-    if type_of_line == 'ML':
-        url_addon = ''
-    elif type_of_line == 'RL':
-        url_addon = 'pointspread/'
-    elif type_of_line == 'total':
-        url_addon = 'totals/'
-    elif type_of_line == '1H':
-        url_addon = '1st-half/'
-    elif type_of_line == '1HRL':
-        url_addon = 'pointspread/1st-half/'
-    elif type_of_line == '1Htotal':
-        url_addon = 'totals/1st-half/'
-    else:
-        print "Wrong url_addon"
+    line_types = [('ML',''),('RL','pointspread/'),('total','totals/'),('1H','1st-half/'),('1HRL','pointspread/1st-half/'),('1Htotal','totals/1st-half/')]
+    url_addon = [lt[1] for num,lt in enumerate(line_types) if lt[0]==type_of_line][0]
     url = 'http://www.sportsbookreview.com/betting-odds/mlb-baseball/' + url_addon + '?date=' + tdate
-    now = datetime.datetime.now()
-    raw_data = requests.get(url)
-    soup_big = BeautifulSoup(raw_data.text, 'html.parser')
-    soup = soup_big.find_all('div', id='OddsGridModule_3')[0]
+
     timestamp = time.strftime("%H:%M:%S")
+    ## needs to run through line_movement_soup to get
+
+    if type_of_line == 'RL' or type_of_line == '1HRL':
+        game_half = 'Full Game' if type_of_line == 'RL' else '1st Half'
+        driver.get(url)
+        soup_big = BeautifulSoup(driver.page_source, 'html.parser')
+        soup = soup_big.find_all('div', id='OddsGridModule_3')[0]
+        line_movement_soup(soup, tdate, driver, game_half)
+    else:
+        soup_big = BeautifulSoup(requests.get(url).text, 'html.parser')
+        soup = soup_big.find_all('div', id='OddsGridModule_3')[0]
+
     return soup, timestamp
 
-def parse_and_write_data(soup, date, time, not_ML = True):
+def line_movement_soup(soup, game_date,driver,game_half):
+    ############ only pull once for 1h and for full game, not 3 times
+    book_list = [('238','Pinnacle'),('19','5Dimes'),('999996','Bovada'),('1096','BetOnline'),('169','Heritage')]
+
+    # Pitcher_Names to pass to line movement file
+    A_pit_list=[]
+    H_pit_list=[]
+    all_pit_info = soup.find_all('div', attrs = {'class':'el-div eventLine-team'})
+    for ngames in range(len(all_pit_info)):
+        A_pit_info  = all_pit_info[ngames].find_all('div')[1].get_text().strip()
+        H_pit_info  = all_pit_info[ngames].find_all('div')[2].get_text().strip()
+        A_pit       = A_pit_info[A_pit_info.find('-') + 2 : A_pit_info.find("(") - 1]
+        H_pit       = H_pit_info[H_pit_info.find('-') + 2 : H_pit_info.find("(") - 1]
+        A_pit_list.append(A_pit)
+        H_pit_list.append(H_pit)
+
+    eventlines = soup.find_all('div', {'class':'el-div eventLine-book'})
+    for num in range(len(eventlines)):
+        a_pit_name = A_pit_list[num//10]
+        h_pit_name = H_pit_list[num//10]
+
+        eventcode = eventlines[num]
+        eventid = eventcode['id']
+        book_id = eventid[[m.start() for m in re.finditer(r"-",eventid)][1]+1:]
+        if book_id in [tup[0] for pos,tup in enumerate(book_list)]:
+            book_name = [tup[1] for pos,tup in enumerate(book_list) if tup[0]==book_id][0]
+
+            ## Open popup
+            driver.find_element_by_xpath("//div[@id='"+eventid+"']").click()
+
+            ## Timer to let popup load
+            time.sleep(1)
+            wait_for_popup = True
+            start_timer = time.time()
+            while (wait_for_popup == True and time.time() - start_timer <= 10):
+                popup_soup = BeautifulSoup(driver.page_source, 'html.parser')
+                if len(popup_soup.find_all('div',attrs = {'class':'info-box'})) > 0:
+                    wait_for_popup = False
+                    break
+                else:
+                    print 'sleep 1 more second'
+                    time.sleep(1)
+
+
+            all_line_changes = get_line_move_data(popup_soup, game_date, game_half, book_name, a_pit_name,h_pit_name)
+            # Print statement wont print all eventlines because of the if statement
+            print 'writing ' + game_half + ' line movement -- ' + str(num+1) + ' / ' + str(len(eventlines))
+
+            with open(os.getcwd()+'\\SBR_MLB_Lines_'+season+'_line_moves.txt', 'a') as f:
+                all_line_changes.to_csv(f, index=False, header = False)
+
+            ## CLose popup
+            driver.find_element_by_xpath("//span[@class='ui-button-icon-primary ui-icon ui-icon-closethick']").click()
+
+def get_line_move_data(soup,game_date,game_half,book_name,a_pit_name,h_pit_name,line_change_list = []):
+    def prettify_odds(r,ha):
+        ## input should be one or 2, depending on if i want away or home data
+        ## Appends lines and odds to list to write to DF
+        if t != 1: # to split up odds and line
+            d = row_data[ha].get_text().replace(u'\xa0',' ').replace(u'\xbd','.5')
+            line = d[:d.index(' ')]
+            odds = d[d.index(' ')+1:]
+            line_change_list.extend([line, odds])
+        else: # to only grab moneyline
+            line = ''
+            odds = row_data[ha].get_text()
+            odds_trimmed = odds[odds.find('+') if odds.find('+') > 0 else odds.find('-'):]
+            line_change_list.extend([line, odds_trimmed])
+
+    df_line_moves = DataFrame(columns=('Date','Team','Team SP','Opponent','Opponent SP','Full or Half Game?', 'Line Type','Time of Line Change','over.under','Line','Odds'))
+    stats_tables = soup.find_all('div', attrs={'class':'info-box'})
+    num_tables = len(stats_tables)
+
+    away_team = team_name_check(stats_tables[0].find_all('table')[0].find_all('tr')[0].find_all('td')[1].get_text())
+    home_team = team_name_check(stats_tables[0].find_all('table')[0].find_all('tr')[0].find_all('td')[2].get_text())
+
+    for t in range(num_tables):
+        stats_table_name = stats_tables[t].find_all('div')[0].get_text()
+        row = stats_tables[t].find_all('table')[1].find_all('tr')
+        for r in reversed(range(len(row))):
+            row_data = row[r].find_all('td')
+            time_of_move = row_data[0].get_text()
+            for dub in range(1,3):
+                line_change_list = []
+                line_change_list.extend([game_date])
+                if dub == 1:
+                    o_u_checker = 'over' if t==2 else ''
+                    line_change_list.extend([away_team,a_pit_name,home_team, h_pit_name])
+                else:
+                    o_u_checker = 'under' if t==2 else ''
+                    line_change_list.extend([home_team,h_pit_name,away_team,a_pit_name])
+                line_change_list.extend([game_half, stats_table_name, time_of_move, o_u_checker])
+                prettify_odds(row_data, dub)
+                df_line_moves.loc[len(df_line_moves)+1] = ([line_change_list[j].replace(u'\xa0',' ').replace(u'\xbd','.5') for j in range(len(line_change_list))])
+    return df_line_moves
+
+def parse_and_write_data(soup, date, time_of_move, not_ML = True):
 ## Parse HTML to gather line data by book
-    def book_line(book_id, line_id, homeaway):
-        ## Get Line info from book ID
-        line = soup.find_all('div', attrs = {'class':'el-div eventLine-book', 'rel':book_id})[line_id].find_all('div')[homeaway].get_text().strip()
-        return line
     '''
+    using ['238','19','999996','1096','169']
     BookID  BookName
     238     Pinnacle
     19      5Dimes
-    93      Bookmaker
+    999996  Bovada
     1096    BetOnline
     169     Heritage
+    93      Bookmaker
     123     BetDSI
-    999996  Bovada
     139     Youwager
     999991  SIA
     '''
+    def book_line(book_id, line_id, homeaway):
+        ## Get Line info from book ID
+        try:
+            lo0 = soup.find_all('div', attrs = {'class':'el-div eventLine-book', 'rel':book_id})[line_id].find_all('div')[homeaway].get_text().strip()
+            lo1 = lo0.replace(u'\xa0',' ').replace(u'\xbd','.5')
+            line = lo1[:lo1.find(' ')]
+            odds = lo1[lo1.find(' ') + 1:]
+        except IndexError:
+            line = ''
+            odds = ''
+        return line,odds
+
     if not_ML:
         df = DataFrame(
                 columns=('key','date','time','H/A',
@@ -73,6 +179,7 @@ def parse_and_write_data(soup, date, time, not_ML = True):
                      'opp_team','opp_pitcher',
                      'opp_hand','pinnacle','5dimes',
                      'heritage','bovada','betonline'))
+
     counter = 0
     number_of_games = len(soup.find_all('div', attrs = {'class':'el-div eventLine-rotation'}))
     #print 'number of games:' + str(number_of_games)
@@ -80,181 +187,74 @@ def parse_and_write_data(soup, date, time, not_ML = True):
         A = []
         H = []
         print str(i+1)+'/'+str(number_of_games)
+
         info_A = 		        soup.find_all('div', attrs = {'class':'el-div eventLine-team'})[i].find_all('div')[0].get_text().strip()
         hyphen_A =              info_A.find('-')
         paren_A =               info_A.find("(")
         team_A =                info_A[:hyphen_A - 1]
         pitcher_A =             info_A[hyphen_A + 2 : paren_A - 1]
         hand_A =                info_A[paren_A + 1 : -1]
-        try:
-            pinnacle_A = 	    book_line('238', i, 0)
-        except IndexError:
-            pinnacle_A = ''
-        try:
-            fivedimes_A = 	    book_line('19', i, 0)
-        except IndexError:
-            fivedimes_A = ''
-        try:
-            heritage_A =        book_line('169', i, 0)
-        except IndexError:
-            heritage_A = ''
-        try:
-            bovada_A = 		    book_line('999996', i, 0)
-        except IndexError:
-            bovada_A = ''
-        try:
-            betonline_A = 		book_line('1096', i, 0)
-        except IndexError:
-            betonline_A = ''
+
         info_H = 		        soup.find_all('div', attrs = {'class':'el-div eventLine-team'})[i].find_all('div')[2].get_text().strip()
         hyphen_H =              info_H.find('-')
         paren_H =               info_H.find("(")
         team_H =                info_H[:hyphen_H - 1]
         pitcher_H =             info_H[hyphen_H + 2 : paren_H - 1]
         hand_H =                info_H[paren_H + 1 : -1]
-        try:
-            pinnacle_H = 	    book_line('238', i, 1)
-        except IndexError:
-            pinnacle_H = ''
-        try:
-            fivedimes_H = 	    book_line('19', i, 1)
-        except IndexError:
-            fivedimes_H = ''
-        try:
-            heritage_H = 	    book_line('169', i, 1)
-        except IndexError:
-            heritage_H = '.'
-        try:
-            bovada_H = 		    book_line('999996', i, 1)
-        except IndexError:
-            bovada_H = '.'
-        try:
-            betonline_H = 		book_line('1096', i, 1)
-        except IndexError:
-            betonline_H = ''
+
+        pinnacle_A_lines, pinnacle_A_odds   =   book_line('238', i, 0)
+        fivedimes_A_lines, fivedimes_A_odds =   book_line('19', i, 0)
+        heritage_A_lines, heritage_A_odds   =   book_line('169', i, 0)
+        bovada_A_lines, bovada_A_odds       =   book_line('999996', i, 0)
+        betonline_A_lines, betonline_A_odds =   book_line('1096', i, 0)
+
+        pinnacle_H_lines, pinnacle_H_odds   =   book_line('238', i, 1)
+        fivedimes_H_lines, fivedimes_H_odds =   book_line('19', i, 1)
+        heritage_H_lines, heritage_H_odds   =   book_line('169', i, 1)
+        bovada_H_lines, bovada_H_odds       =   book_line('999996', i, 1)
+        betonline_H_lines, betonline_H_odds =   book_line('1096', i, 1)
+
         ## Edit team names to match personal preference
-        if team_H == 'LA':
-            team_H = 'LAD'
-        elif team_H == 'SD':
-            team_H = 'SDG'
-        elif team_H == 'SF':
-            team_H = 'SFO'
-        elif team_H == 'NY':
-            team_H = 'NYM'
-        elif team_H == 'KC':
-            team_H = 'KCA'
-        elif team_H == 'TB':
-            team_H = 'TBA'
-        elif team_H == 'CWS':
-            team_H = 'CHW'
-        elif team_H == 'CHI':
-            team_H = 'CHC'
-        elif team_H == 'WSH':
-            team_H = 'WAS'
-        if team_A == 'LA':
-            team_A = 'LAD'
-        elif team_A == 'SD':
-            team_A = 'SDG'
-        elif team_A == 'SF':
-            team_A = 'SFO'
-        elif team_A == 'NY':
-            team_A = 'NYM'
-        elif team_A == 'KC':
-            team_A = 'KCA'
-        elif team_A == 'TB':
-            team_A = 'TBA'
-        elif team_A == 'CWS':
-            team_A = 'CHW'
-        elif team_A == 'CHI':
-            team_A = 'CHC'
-        elif team_A == 'WSH':
-            team_A = 'WAS'
+        team_H = team_name_check(team_H)
+        team_A = team_name_check(team_A)
+
         A.append(str(date) + '_' + team_A.replace(u'\xa0',' ') + '_' + team_H.replace(u'\xa0',' '))
-        A.append(date)
-        A.append(time)
-        A.append('away')
-        A.append(team_A)
-        A.append(pitcher_A)
-        A.append(hand_A)
-        A.append(team_H)
-        A.append(pitcher_H)
-        A.append(hand_H)
+        A.extend([date,time_of_move,'away',team_A,pitcher_A,hand_A,team_H,pitcher_H,hand_H])
+
         ## Account for runline and totals. Usually come in format '7 -110' or '-0.5 -110'.
         ## Use these if statements to separate line from odds
         if not_ML:
-            pinnacle_A = pinnacle_A.replace(u'\xa0',' ').replace(u'\xbd','.5')
-            pinnacle_A_line = pinnacle_A[:pinnacle_A.find(' ')]
-            pinnacle_A_odds = pinnacle_A[pinnacle_A.find(' ') + 1:]
-            A.append(pinnacle_A_line)
-            A.append(pinnacle_A_odds)
-            fivedimes_A = fivedimes_A.replace(u'\xa0',' ').replace(u'\xbd','.5')
-            fivedimes_A_line = fivedimes_A[:fivedimes_A.find(' ')]
-            fivedimes_A_odds = fivedimes_A[fivedimes_A.find(' ') + 1:]
-            A.append(fivedimes_A_line)
-            A.append(fivedimes_A_odds)
-            heritage_A = heritage_A.replace(u'\xa0',' ').replace(u'\xbd','.5')
-            heritage_A_line = heritage_A[:heritage_A.find(' ')]
-            heritage_A_odds = heritage_A[heritage_A.find(' ') + 1:]
-            A.append(heritage_A_line)
-            A.append(heritage_A_odds)
-            bovada_A = bovada_A.replace(u'\xa0',' ').replace(u'\xbd','.5')
-            bovada_A_line = bovada_A[:bovada_A.find(' ')]
-            bovada_A_odds = bovada_A[bovada_A.find(' ') + 1:]
-            A.append(bovada_A_line)
-            A.append(bovada_A_odds)
-            betonline_A = betonline_A.replace(u'\xa0',' ').replace(u'\xbd','.5')
-            betonline_A_line = betonline_A[:betonline_A.find(' ')]
-            betonline_A_odds = betonline_A[betonline_A.find(' ') + 1:]
-            A.append(betonline_A_line)
-            A.append(betonline_A_odds)
+            ## write pinnacle data in list
+            A.extend([pinnacle_A_lines,pinnacle_A_odds
+                      , fivedimes_A_lines, fivedimes_A_odds
+                      , heritage_A_lines, heritage_A_odds
+                      , bovada_A_lines, bovada_A_odds
+                      , betonline_A_lines, betonline_A_odds])
         else:
-            A.append(pinnacle_A.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            A.append(fivedimes_A.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            A.append(heritage_A.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            A.append(bovada_A.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            A.append(betonline_A.replace(u'\xa0',' ').replace(u'\xbd','.5'))
+            ## write ML book data in list
+            A.extend([pinnacle_A_odds
+                      , fivedimes_A_odds
+                      , heritage_A_odds
+                      , bovada_A_odds
+                      , betonline_A_odds])
+
         H.append(str(date) + '_' + team_A.replace(u'\xa0',' ') + '_' + team_H.replace(u'\xa0',' '))
-        H.append(date)
-        H.append(time)
-        H.append('home')
-        H.append(team_H)
-        H.append(pitcher_H)
-        H.append(hand_H)
-        H.append(team_A)
-        H.append(pitcher_A)
-        H.append(hand_A)
+        H.extend([date,time_of_move,'home',team_H,pitcher_H,hand_H,team_A,pitcher_A,hand_A])
         if not_ML:
-            pinnacle_H = pinnacle_H.replace(u'\xa0',' ').replace(u'\xbd','.5')
-            pinnacle_H_line = pinnacle_H[:pinnacle_H.find(' ')]
-            pinnacle_H_odds = pinnacle_H[pinnacle_H.find(' ') + 1:]
-            H.append(pinnacle_H_line)
-            H.append(pinnacle_H_odds)
-            fivedimes_H = fivedimes_H.replace(u'\xa0',' ').replace(u'\xbd','.5')
-            fivedimes_H_line = fivedimes_H[:fivedimes_H.find(' ')]
-            fivedimes_H_odds = fivedimes_H[fivedimes_H.find(' ') + 1:]
-            H.append(fivedimes_H_line)
-            H.append(fivedimes_H_odds)
-            heritage_H = heritage_H.replace(u'\xa0',' ').replace(u'\xbd','.5')
-            heritage_H_line = heritage_H[:heritage_H.find(' ')]
-            heritage_H_odds = heritage_H[heritage_H.find(' ') + 1:]
-            H.append(heritage_H_line)
-            H.append(heritage_H_odds)
-            bovada_H = bovada_H.replace(u'\xa0',' ').replace(u'\xbd','.5')
-            bovada_H_line = bovada_H[:bovada_H.find(' ')]
-            bovada_H_odds = bovada_H[bovada_H.find(' ') + 1:]
-            H.append(bovada_H_line)
-            H.append(bovada_H_odds)
-            betonline_H = betonline_H.replace(u'\xa0',' ').replace(u'\xbd','.5')
-            betonline_H_line = betonline_H[:betonline_H.find(' ')]
-            betonline_H_odds = betonline_H[betonline_H.find(' ') + 1:]
-            H.append(betonline_H_line)
-            H.append(betonline_H_odds)
+            ## write pinnacle data in list
+            H.extend([pinnacle_H_lines,pinnacle_H_odds
+                      , fivedimes_H_lines, fivedimes_H_odds
+                      , heritage_H_lines, heritage_H_odds
+                      , bovada_H_lines, bovada_H_odds
+                      , betonline_H_lines, betonline_H_odds])
         else:
-            H.append(pinnacle_H.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            H.append(fivedimes_H.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            H.append(heritage_H.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            H.append(bovada_H.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            H.append(betonline_H.replace(u'\xa0',' ').replace(u'\xbd','.5'))
+            ## write ML book data in list
+            H.extend([pinnacle_H_odds
+                      , fivedimes_H_odds
+                      , heritage_H_odds
+                      , bovada_H_odds
+                      , betonline_H_odds])
+
         ## Write List (A & H) into dataframe
         df.loc[counter]   = ([A[j] for j in range(len(A))])
         df.loc[counter+1] = ([H[j] for j in range(len(H))])
@@ -285,28 +285,46 @@ def select_and_rename(df, text):
                       text+'_BOL_line',text+'_BOL_odds']
     return df
 
-def main(inputdate = str(date.today()).replace('-','')):
-    
+def team_name_check(team_name):
+        new_team_name = 'LAD' if team_name == 'LA' else \
+                        'SDG' if team_name == 'SD' else \
+                        'SFO' if team_name == 'SF' else \
+                        'NYM' if team_name == 'NY' else \
+                        'KCA' if team_name == 'KC' else \
+                        'TBA' if team_name == 'TB' else \
+                        'CHW' if team_name == 'CWS' else \
+                        'CHC' if team_name == 'CHI' else \
+                        'WAS' if team_name == 'WSH' else \
+                        team_name
 
+        return new_team_name
+
+def main(driver, season, inputdate = str(date.today()).replace('-','')):
     ## Get today's lines
     todays_date = str(date.today()).replace('-','')
     todays_date = inputdate
-    
+
     ## store BeautifulSoup info for parsing
-    soup_ml, time_ml = soup_url('ML', todays_date)
     print "getting today's MoneyLine (1/6)"
-    soup_rl, time_rl = soup_url('RL', todays_date)
+    soup_ml, time_ml = soup_url('ML', todays_date)
+
     print "getting today's RunLine (2/6)"
-    soup_tot, time_tot = soup_url('total', todays_date)
+    soup_rl, time_rl = soup_url('RL', todays_date, driver)
+
     print "getting today's totals (3/6)"
-    soup_1h_ml, time_1h_ml = soup_url('1H', todays_date)
+    soup_tot, time_tot = soup_url('total', todays_date)
+
     print "getting today's 1st-half MoneyLine (4/6)"
-    soup_1h_rl, time_1h_rl = soup_url('1HRL', todays_date)
+    soup_1h_ml, time_1h_ml = soup_url('1H', todays_date)
+
     print "getting today's 1st-half RunLine (5/6)"
-    soup_1h_tot, time_1h_tot = soup_url('1Htotal', todays_date)
+    soup_1h_rl, time_1h_rl = soup_url('1HRL', todays_date, driver)
+
     print "getting today's 1st-half totals (6/6)"
+    soup_1h_tot, time_1h_tot = soup_url('1Htotal', todays_date)
 
 
+    ## Parse and Write
     print "writing today's MoneyLine (1/6)"
     df_ml = parse_and_write_data(soup_ml, todays_date, time_ml, not_ML = False)
     ## Change column names to make them unique
@@ -334,6 +352,7 @@ def main(inputdate = str(date.today()).replace('-','')):
     df_1h_tot = parse_and_write_data(soup_1h_tot, todays_date, time_1h_tot)
     df_1h_tot = select_and_rename(df_1h_tot,'1h_tot')
 
+    ## Write to Dataframes
     write_df = df_ml
     write_df = write_df.merge(
                 df_rl, how='left', on = ['key','team','pitcher','hand','opp_team'])
@@ -346,146 +365,41 @@ def main(inputdate = str(date.today()).replace('-','')):
     write_df = write_df.merge(
                 df_1h_tot, how='left', on = ['key','team','pitcher','hand','opp_team'])
 
-
-    # if time.ml[:2] >= 12:
-        # tomorrows_date = str(datetime.date.today() + datetime.timedelta(days=1)).replace('-','')
-        # ## store BeautifulSoup info for parsing
-        # soup_ml, time_ml = soup_url('ML')
-        # print "getting tomorrow's MoneyLine"
-        # soup_rl, time_rl = soup_url('RL')
-        # print "getting tomorrow's RunLine"
-        # soup_tot, time_tot = soup_url('total')
-        # print "getting tomorrow's totals"
-        # soup_1h_ml, time_1h_ml = soup_url('1H')
-        # print "getting tomorrow's 1st-half MoneyLine"
-        # soup_1h_rl, time_1h_rl = soup_url('1HRL')
-        # print "getting tomorrow's 1st-half RunLine"
-        # soup_1h_tot, time_1h_tot = soup_url('1Htotal')
-        # print "getting tomorrow's 1st-half totals"
-
-        # parse_and_write_data(soup_ml, todays_date, time_ml, f)
-        # parse_and_write_data(soup_rl, todays_date, time_rl, f)
-        # parse_and_write_data(soup_tot, todays_date, time_tot, f)
-        # parse_and_write_data(soup_1h_ml, todays_date, time_1h_ml, f)
-        # parse_and_write_data(soup_1h_rl, todays_date, time_1h_rl, f)
-        # parse_and_write_data(soup_1h_tot, todays_date, time_1h_tot, f)
-
-    with open('.\'+todays_date[:4]+'SBR_MLB_Lines.txt', 'a') as f:
+    ## Write to txt
+    with open(os.getcwd()+'\\SBR_MLB_Closing_Lines_'+season+'.txt', 'a') as f:
         write_df.to_csv(f, index=False, header = False)
 
+def run_main(driver, season, month = 1):
+    bad_games = []
+    ## Get number of days in a month
+    month = int(month)
+    days_in_month = 31 if (month == 1 or month == 3 or month == 5 or month == 7 or month == 8 or month == 10 or month == 12) else 30
+    ## Convert month to two characters
+    month = ('0' if len(str(month+1)) == 1 else '') + str(month+1)
+    for z in range(days_in_month):
+        z = ('0' if len(str(z+1)) == 1 else '') + str(z+1)
+        lookupdate = season+month+z
+        print lookupdate
+        try:
+            main(driver, season, lookupdate)
+        except IndexError:
+            f=open(os.getcwd()+'\\SBR_MLB_Lines_bad_games.txt', "a")
+            f.write(lookupdate+'\n')
+            f.close()
+            print
+            print 'bad game -- ' + lookupdate
+            print
+            pass
 
 if __name__ == '__main__':
-    connectTor()
-    
-    season = str(raw_input("What season would you like to scrape (must be in the format yyyy):"))
-    # March has 31 days
-    for z in range(20,31):
-        if len(str(z+1)) == 1:
-            z = '0' + str(z+1)
-        else:
-            z = str(z+1)
-        lookupdate = season+'03'+z
-        print lookupdate
-        ## To account for any days without games  
-        try:
-            main(lookupdate)
-        except IndexError:
-            pass
+    # connectTor()
 
-    # April has 30 days
-    for z in range(30):
-        if len(str(z+1)) == 1:
-            z = '0' + str(z+1)
-        else:
-            z = str(z+1)
-        lookupdate = season+'04'+z
-        print lookupdate
-        ## To account for any days without games  
-        try:
-            main(lookupdate)
-        except IndexError:
-            pass
+    season = str(input("Please type the year for which you would like to pull data (yyyy):"))
+    start_month = input("Please type the starting month for which you would like to pull data (1-12):")
+    end_month = input("Please type the last month for which you would like to pull data (1-12):")
+    driver = webdriver.Chrome()
 
-    # May has 31 days
-    for z in range(31):
-        if len(str(z+1)) == 1:
-            z = '0' + str(z+1)
-        else:
-            z = str(z+1)
-        lookupdate = season+'05'+z
-        print lookupdate
-        ## To account for any days without games  
-        try:
-            main(lookupdate)
-        except IndexError:
-            pass
+    for y in range(start_month-1, end_month):
+        run_main(driver, season, y)
 
-    # June has 30 days
-    for z in range(30):
-        if len(str(z+1)) == 1:
-            z = '0' + str(z+1)
-        else:
-            z = str(z+1)
-        lookupdate = season+'06'+z
-        print lookupdate
-        ## To account for any days without games  
-        try:
-            main(lookupdate)
-        except IndexError:
-            pass
-
-    # July has 31 days
-    for z in range(31):
-        if len(str(z+1)) == 1:
-            z = '0' + str(z+1)
-        else:
-            z = str(z+1)
-        lookupdate = season+'07'+z
-        print lookupdate
-        ## To account for any days without games  
-        try:
-            main(lookupdate)
-        except IndexError:
-            pass
-
-    # August has 31 days
-    for z in range(31):
-        if len(str(z+1)) == 1:
-            z = '0' + str(z+1)
-        else:
-            z = str(z+1)
-        lookupdate = season+'10'+z
-        print lookupdate
-        ## To account for any days without games  
-        try:
-            main(lookupdate)
-        except IndexError:
-            pass
-
-    # September has 30 days	
-    for z in range(30):
-        if len(str(z+1)) == 1:
-            z = '0' + str(z+1)
-        else:
-            z = str(z+1)
-        lookupdate = season+'09'+z
-        print lookupdate
-        ## To account for any days without games  
-        try:
-            main(lookupdate)
-        except IndexError:
-            pass
-
-    # October has 31 days	
-    for z in range(9):
-        if len(str(z+1)) == 1:
-            z = '0' + str(z+1)
-        else:
-            z = str(z+1)
-        lookupdate = season+'10'+z
-        print lookupdate
-        ## To account for any days without games  
-        try:
-            main(lookupdate)
-        except IndexError:
-            pass
+    driver.close()
