@@ -393,7 +393,26 @@ def run_main(driver, season, month = 1):
 
 if __name__ == '__main__':
     # connectTor()
-
+    
+    # Add Column Headers
+    f = open(os.getcwd()+'\\SBR_MLB_Closing_Lines_'+season+'.txt', 'a')
+    f.write('Game_ID','Date','Time_FG_ML','HA','Team','Team_SP','Team_SP_hand','Opp','Opp_SP','Opp_SP_hand',
+        'FG_ML_PIN','FG_ML_FD','FG_ML_HER','FG_ML_BVD','FG_ML_BOL',
+        'Time_FG_RL','FG_RL_Line_PIN','FG_RL_Odds_PIN','FG_RL_Line_FD','FG_RL_Odds_FD','FG_RL_Line_HER','FG_RL_Odds_HER','FG_RL_Line_BVD','FG_RL_Odds_BVD','FG_RL_Line_BOL','FG_RL_Odds_BOL',
+        'Time_FG_Tot','FG_Tot_Line_PIN','FG_Tot_Odds_PIN','FG_Tot_Line_FD','FG_Tot_Odds_FD','FG_Tot_Line_HER','FG_Tot_Odds_HER','FG_Tot_Line_BVD','FG_Tot_Odds_BVD','FG_Tot_Line_BOL','FG_Tot_Odds_BOL',
+        'Time_FF_ML','FF_ML_PIN','FF_ML_FD','FF_ML_HER','FF_ML_BVD','FF_ML_BOL',
+        'Time_FF_RL','FF_RL_Line_PIN','FF_RL_Odds_PIN','FF_RL_Line_FD','FF_RL_Odds_FD','FF_RL_Line_HER','FF_RL_Odds_HER','FF_RL_Line_BVD','FF_RL_Odds_BVD','FF_RL_Line_BOL','FF_RL_Odds_BOL',
+        'Time_FF_RL','FF_Tot_Line_PIN','FF_Tot_Odds_PIN','FF_Tot_Line_FD','FF_Tot_Odds_FD','FF_Tot_Line_HER','FF_Tot_Odds_HER','FF_Tot_Line_BVD','FF_Tot_Odds_BVD','FF_Tot_Line_BOL','FF_Tot_Odds_BOL')
+    f.write('\n')
+    f.close()
+    
+    
+    f = open(os.getcwd()+'\\SBR_MLB_Lines_'+season+'_line_moves.txt', 'a')
+    f.write('Date','Team','Team_SP','Opp','Opp_SP','Bet_Length','Bet_Type','Line_Move_Time','Over_Under','Line','Odds')
+    f.write('\n')
+    f.close()
+    
+    
     season = str(input("Please type the year for which you would like to pull data (yyyy):"))
     start_month = input("Please type the starting month for which you would like to pull data (1-12):")
     end_month = input("Please type the last month for which you would like to pull data (1-12):")
