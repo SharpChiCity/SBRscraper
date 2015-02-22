@@ -65,33 +65,37 @@ def line_movement_soup(soup, game_date,driver,game_half):
         if book_id in [tup[0] for pos,tup in enumerate(book_list)]:
             book_name = [tup[1] for pos,tup in enumerate(book_list) if tup[0]==book_id][0]
 
-            ## Open popup
-            driver.find_element_by_xpath("//div[@id='"+eventid+"']").click()
-
-            ## Timer to let popup load
-            time.sleep(1)
-            wait_for_popup = True
-            start_timer = time.time()
-            while (wait_for_popup == True and time.time() - start_timer <= 10):
-                popup_soup = BeautifulSoup(driver.page_source, 'html.parser')
-                if len(popup_soup.find_all('div',attrs = {'class':'info-box'})) > 0:
-                    wait_for_popup = False
-                    break
-                else:
-                    print 'sleep 1 more second'
-                    time.sleep(1)
-
-
-            all_line_changes = get_line_move_data(popup_soup, game_date, game_half, book_name, a_pit_name,h_pit_name)
-            # Print statement wont print all eventlines because of the if statement
-            print 'writing ' + game_half + ' line movement -- ' + str(num+1) + ' / ' + str(len(eventlines))
-
-            with open(os.getcwd()+'\\SBR_MLB_Lines_'+season+'_line_moves.txt', 'a') as f:
-                all_line_changes.to_csv(f, index=False, header = False)
-
-            ## CLose popup
-            driver.find_element_by_xpath("//span[@class='ui-button-icon-primary ui-icon ui-icon-closethick']").click()
-
+            try:
+                ## Open popup
+                driver.find_element_by_xpath("//div[@id='"+eventid+"']").click()
+    
+                ## Timer to let popup load
+                time.sleep(1)
+                wait_for_popup = True
+                start_timer = time.time()
+                while (wait_for_popup == True and time.time() - start_timer <= 10):
+                    popup_soup = BeautifulSoup(driver.page_source, 'html.parser')
+                    if len(popup_soup.find_all('div',attrs = {'class':'info-box'})) > 0:
+                        wait_for_popup = False
+                        break
+                    else:
+                        print 'sleep 1 more second'
+                        time.sleep(1)
+    
+    
+                all_line_changes = get_line_move_data(popup_soup, game_date, game_half, book_name, a_pit_name,h_pit_name)
+                # Print statement wont print all eventlines because of the if statement
+                print 'writing ' + game_half + ' line movement -- ' + str(num+1) + ' / ' + str(len(eventlines))
+    
+                with open(os.getcwd()+'\\SBR_MLB_Lines_'+season+'_line_moves.txt', 'a') as f:
+                    all_line_changes.to_csv(f, index=False, header = False)
+    
+                ## CLose popup
+                driver.find_element_by_xpath("//span[@class='ui-button-icon-primary ui-icon ui-icon-closethick']").click()
+            except:
+                print 'skipped one link'
+                pass
+                
 def get_line_move_data(soup,game_date,game_half,book_name,a_pit_name,h_pit_name,line_change_list = []):
     def prettify_odds(r,ha):
         ## input should be one or 2, depending on if i want away or home data
