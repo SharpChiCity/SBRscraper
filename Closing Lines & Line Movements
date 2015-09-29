@@ -423,7 +423,10 @@ if __name__ == '__main__':
     f.close()
 
     driver = webdriver.Chrome()
-
+    # to uitilize a headless driver, download and install phantomjs and use below to open driver instead of above line
+    # download link -- http://phantomjs.org/download.html
+    # driver = webdriver.PhantomJS(r"C:\Users\Monstar\Python\phantomjs-2.0.0\bin\phantomjs.exe")
+    
     for y in range(start_month-1, end_month):
         run_main(driver, season, y)
 
