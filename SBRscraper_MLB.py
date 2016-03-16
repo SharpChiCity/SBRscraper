@@ -15,20 +15,16 @@ def connectTor():
 
 def soup_url(type_of_line, tdate = str(date.today()).replace('-','')):
 ## get html code for odds based on desired line type and date
-    if type_of_line == 'ML':
-        url_addon = ''
-    elif type_of_line == 'RL':
-        url_addon = 'pointspread/'
-    elif type_of_line == 'total':
-        url_addon = 'totals/'
-    elif type_of_line == '1H':
-        url_addon = '1st-half/'
-    elif type_of_line == '1HRL':
-        url_addon = 'pointspread/1st-half/'
-    elif type_of_line == '1Htotal':
-        url_addon = 'totals/1st-half/'
-    else:
-        print "Wrong url_addon"
+
+    web_url = dict()
+    web_url['ML'] = ''
+    web_url['RL'] = 'pointspread/'
+    web_url['total'] = 'totals/'
+    web_url['1H'] = '1st-half/'
+    web_url['1HRL'] = 'pointspread/1st-half'
+    web_url['1Htotal'] = 'totals/1st-half'
+    url_addon = web_url[type_of_line]
+
     url = 'http://www.sbrforum.com/betting-odds/mlb-baseball/' + url_addon + '?date=' + tdate
     now = datetime.datetime.now()
     raw_data = requests.get(url)
@@ -36,6 +32,9 @@ def soup_url(type_of_line, tdate = str(date.today()).replace('-','')):
     soup = soup_big.find_all('div', id='OddsGridModule_3')[0]
     timestamp = time.strftime("%H:%M:%S")
     return soup, timestamp
+
+def replace_unicode(string):
+    return string.replace(u'\xa0',' ').replace(u'\xbd','.5')
 
 def parse_and_write_data(soup, date, time, not_ML = True):
 ## Parse HTML to gather line data by book
@@ -88,89 +87,49 @@ def parse_and_write_data(soup, date, time, not_ML = True):
         team_A =                info_A[:hyphen_A - 1]
         pitcher_A =             info_A[hyphen_A + 2 : paren_A - 1]
         hand_A =                info_A[paren_A + 1 : -1]
+        
         ## get line/odds info for unique book. Need error handling to account for blank data
-        try:
-            pinnacle_A = 	    book_line('238', i, 0)
-        except IndexError:
-            pinnacle_A = ''
-        try:
-            fivedimes_A = 	    book_line('19', i, 0)
-        except IndexError:
-            fivedimes_A = ''
-        try:
-            heritage_A =        book_line('169', i, 0)
-        except IndexError:
-            heritage_A = ''
-        try:
-            bovada_A = 		    book_line('999996', i, 0)
-        except IndexError:
-            bovada_A = ''
-        try:
-            betonline_A = 		book_line('1096', i, 0)
-        except IndexError:
-            betonline_A = ''
+        def try_except_book_line(id, i , x):
+            try:
+                return book_line(id, i, x)
+            except IndexError:
+                return ''
+        
+        pinnacle_A = try_except_book_line('238',i, 0)
+        fivedimes_A = try_except_book_line('19',i, 0)
+        heritage_A = try_except_book_line('169, i, 0)
+        bovada_A = try_except_book_line('999996, i, 0)
+        betonline_A = try_except_book_line('1096, i, 0)
+
         info_H = 		        soup.find_all('div', attrs = {'class':'el-div eventLine-team'})[i].find_all('div')[2].get_text().strip()
         hyphen_H =              info_H.find('-')
         paren_H =               info_H.find("(")
         team_H =                info_H[:hyphen_H - 1]
         pitcher_H =             info_H[hyphen_H + 2 : paren_H - 1]
         hand_H =                info_H[paren_H + 1 : -1]
-        try:
-            pinnacle_H = 	    book_line('238', i, 1)
-        except IndexError:
-            pinnacle_H = ''
-        try:
-            fivedimes_H = 	    book_line('19', i, 1)
-        except IndexError:
-            fivedimes_H = ''
-        try:
-            heritage_H = 	    book_line('169', i, 1)
-        except IndexError:
-            heritage_H = '.'
-        try:
-            bovada_H = 		    book_line('999996', i, 1)
-        except IndexError:
-            bovada_H = '.'
-        try:
-            betonline_H = 		book_line('1096', i, 1)
-        except IndexError:
-            betonline_H = ''
-        if team_H == 'LA':
-            team_H = 'LAD'
-        elif team_H == 'SD':
-            team_H = 'SDG'
-        elif team_H == 'SF':
-            team_H = 'SFO'
-        elif team_H == 'NY':
-            team_H = 'NYM'
-        elif team_H == 'KC':
-            team_H = 'KCA'
-        elif team_H == 'TB':
-            team_H = 'TBA'
-        elif team_H == 'CWS':
-            team_H = 'CHW'
-        elif team_H == 'CHI':
-            team_H = 'CHC'
-        elif team_H == 'WSH':
-            team_H = 'WAS'
-        if team_A == 'LA':
-            team_A = 'LAD'
-        elif team_A == 'SD':
-            team_A = 'SDG'
-        elif team_A == 'SF':
-            team_A = 'SFO'
-        elif team_A == 'NY':
-            team_A = 'NYM'
-        elif team_A == 'KC':
-            team_A = 'KCA'
-        elif team_A == 'TB':
-            team_A = 'TBA'
-        elif team_A == 'CWS':
-            team_A = 'CHW'
-        elif team_A == 'CHI':
-            team_A = 'CHC'
-        elif team_A == 'WSH':
-            team_A = 'WAS'            
+
+        pinnacle_H = try_except_book_line('238',i, 1)
+        fivedimes_H = try_except_book_line('19',i, 1)
+        heritage_H = try_except_book_line('169, i, 1)
+        bovada_H = try_except_book_line('999996, i, 1)
+        betonline_H = try_except_book_line('1096, i, 1)
+
+        short_to_long_abbr = dict()
+        short_to_long_abbr['LA'] = 'LAD'
+        short_to_long_abbr['SD'] = 'SDG'
+        short_to_long_abbr['SF'] = 'SFO'
+        short_to_long_abbr['NY'] = 'NYM'
+        short_to_long_abbr['KC'] = 'KCA'
+        short_to_long_abbr['TB'] = 'TBA'
+        short_to_long_abbr['CWS'] = 'CHW'
+        short_to_long_abbr['CHI'] = 'CHC'
+        short_to_long_abbr['WSH'] = 'WAS'
+        
+        if team_H in short_to_long_abbr:
+            team_H = short_to_long_abbr[team_H]
+        if team_A in short_to_long_abbr:
+            team_A = short_to_long_abbr[team_A]
+        
         A.append(str(date) + '_' + team_A.replace(u'\xa0',' ') + '_' + team_H.replace(u'\xa0',' '))
         A.append(date)
         A.append(time)
@@ -182,37 +141,37 @@ def parse_and_write_data(soup, date, time, not_ML = True):
         A.append(pitcher_H)
         A.append(hand_H)
         if not_ML:
-            pinnacle_A = pinnacle_A.replace(u'\xa0',' ').replace(u'\xbd','.5')
+            pinnacle_A = replace_unicode(pinnacle_A)
             pinnacle_A_line = pinnacle_A[:pinnacle_A.find(' ')]
             pinnacle_A_odds = pinnacle_A[pinnacle_A.find(' ') + 1:]
             A.append(pinnacle_A_line)
             A.append(pinnacle_A_odds)
-            fivedimes_A = fivedimes_A.replace(u'\xa0',' ').replace(u'\xbd','.5')
+            fivedimes_A = replace_unicode(fivedimes_A)
             fivedimes_A_line = fivedimes_A[:fivedimes_A.find(' ')]
             fivedimes_A_odds = fivedimes_A[fivedimes_A.find(' ') + 1:]
             A.append(fivedimes_A_line)
             A.append(fivedimes_A_odds)
-            heritage_A = heritage_A.replace(u'\xa0',' ').replace(u'\xbd','.5')
+            heritage_A = replace_unicode(heritage_A)
             heritage_A_line = heritage_A[:heritage_A.find(' ')]
             heritage_A_odds = heritage_A[heritage_A.find(' ') + 1:]
             A.append(heritage_A_line)
             A.append(heritage_A_odds)
-            bovada_A = bovada_A.replace(u'\xa0',' ').replace(u'\xbd','.5')
+            bovada_A = replace_unicode(bovada_A)
             bovada_A_line = bovada_A[:bovada_A.find(' ')]
             bovada_A_odds = bovada_A[bovada_A.find(' ') + 1:]
             A.append(bovada_A_line)
             A.append(bovada_A_odds)
-            betonline_A = betonline_A.replace(u'\xa0',' ').replace(u'\xbd','.5')
+            betonline_A = replace_unicode(betonline_A)
             betonline_A_line = betonline_A[:betonline_A.find(' ')]
             betonline_A_odds = betonline_A[betonline_A.find(' ') + 1:]
             A.append(betonline_A_line)
             A.append(betonline_A_odds)
         else:
-            A.append(pinnacle_A.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            A.append(fivedimes_A.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            A.append(heritage_A.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            A.append(bovada_A.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            A.append(betonline_A.replace(u'\xa0',' ').replace(u'\xbd','.5'))
+            A.append(replace_unicode(pinnacle_A))
+            A.append(replace_unicode(fivedimes_A))
+            A.append(replace_unicode(heritage_A))
+            A.append(replace_unicode(bovada_A))
+            A.append(replace_unicode(betonline_A))
         H.append(str(date) + '_' + team_A.replace(u'\xa0',' ') + '_' + team_H.replace(u'\xa0',' '))
         H.append(date)
         H.append(time)
@@ -224,37 +183,37 @@ def parse_and_write_data(soup, date, time, not_ML = True):
         H.append(pitcher_A)
         H.append(hand_A)
         if not_ML:
-            pinnacle_H = pinnacle_H.replace(u'\xa0',' ').replace(u'\xbd','.5')
+            pinnacle_H = replace_unicode(pinnacle_H)
             pinnacle_H_line = pinnacle_H[:pinnacle_H.find(' ')]
             pinnacle_H_odds = pinnacle_H[pinnacle_H.find(' ') + 1:]
             H.append(pinnacle_H_line)
             H.append(pinnacle_H_odds)
-            fivedimes_H = fivedimes_H.replace(u'\xa0',' ').replace(u'\xbd','.5')
+            fivedimes_H = replace_unicode(fivedimes_H)
             fivedimes_H_line = fivedimes_H[:fivedimes_H.find(' ')]
             fivedimes_H_odds = fivedimes_H[fivedimes_H.find(' ') + 1:]
             H.append(fivedimes_H_line)
             H.append(fivedimes_H_odds)
-            heritage_H = heritage_H.replace(u'\xa0',' ').replace(u'\xbd','.5')
+            heritage_H = replace_unicode(heritage_H)
             heritage_H_line = heritage_H[:heritage_H.find(' ')]
             heritage_H_odds = heritage_H[heritage_H.find(' ') + 1:]
             H.append(heritage_H_line)
             H.append(heritage_H_odds)
-            bovada_H = bovada_H.replace(u'\xa0',' ').replace(u'\xbd','.5')
+            bovada_H = replace_unicode(bovada_H)
             bovada_H_line = bovada_H[:bovada_H.find(' ')]
             bovada_H_odds = bovada_H[bovada_H.find(' ') + 1:]
             H.append(bovada_H_line)
             H.append(bovada_H_odds)
-            betonline_H = betonline_H.replace(u'\xa0',' ').replace(u'\xbd','.5')
+            betonline_H = replace_unicode(betonline_H)
             betonline_H_line = betonline_H[:betonline_H.find(' ')]
             betonline_H_odds = betonline_H[betonline_H.find(' ') + 1:]
             H.append(betonline_H_line)
             H.append(betonline_H_odds)
         else:
-            H.append(pinnacle_H.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            H.append(fivedimes_H.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            H.append(heritage_H.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            H.append(bovada_H.replace(u'\xa0',' ').replace(u'\xbd','.5'))
-            H.append(betonline_H.replace(u'\xa0',' ').replace(u'\xbd','.5'))
+            H.append(replace_unicode(pinnacle_H))
+            H.append(replace_unicode(fivedimes_H))
+            H.append(replace_unicode(heritage_H))
+            H.append(replace_unicode(bovada_H))
+            H.append(replace_unicode(betonline_H))
         
         ## Take data from A and H (lists) and put them into DataFrame
         df.loc[counter]   = ([A[j] for j in range(len(A))])
