@@ -1,5 +1,5 @@
-import socket
-import socks
+# import socket
+# import socks
 import requests
 from bs4 import BeautifulSoup
 import datetime
@@ -15,7 +15,7 @@ def connectTor():
 ## Connect to Tor for privacy purposes
     socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, '127.0.0.1', 9150, True)
     socket.socket = socks.socksocket
-    print "connected to Tor!"
+    print("connected to Tor!")
 
 def soup_url(type_of_line, tdate = str(date.today()).replace('-',''), driver = ''):
 ## get html code for odds based on desired line type and date
@@ -82,13 +82,13 @@ def line_movement_soup(soup, game_date,driver,game_half):
                         wait_for_popup = False
                         break
                     else:
-                        print 'sleep 1 more second'
+                        print('sleep 1 more second')
                         time.sleep(1)
 
 
                 all_line_changes = get_line_move_data(popup_soup, game_date, game_half, book_name, a_pit_name,h_pit_name)
-                # Print statement wont print all eventlines because of the if statement
-                print book_name, 'writing', game_half, 'line movement --', str((num+1)//10+1), '/', str(len(eventlines)//10)
+                # Print statement wont print(all eventlines because of the if statement
+                print(book_name, 'writing', game_half, 'line movement --', str((num+1)//10+1), '/', str(len(eventlines)//10))
 
                 with open(os.getcwd()+'\\SBR_MLB_'+season+'_Line_Moves_daily.txt', 'a') as f:
                     all_line_changes.to_csv(f, index=False, header = False)
@@ -96,7 +96,7 @@ def line_movement_soup(soup, game_date,driver,game_half):
                 ## CLose popup
                 driver.find_element_by_xpath("//span[@class='ui-button-icon-primary ui-icon ui-icon-closethick']").click()
             except:
-                print 'skipped one link'
+                print('skipped one link')
                 pass
             
 def get_line_move_data(soup,game_date,game_half,book_name,a_pit_name,h_pit_name,line_change_list = []):
@@ -191,20 +191,20 @@ def parse_and_write_data(soup, date, time_of_move, not_ML = True):
 
     counter = 0
     number_of_games = len(soup.find_all('div', attrs = {'class':'el-div eventLine-rotation'}))
-    #print 'number of games:' + str(number_of_games)
+    #print('number of games:' + str(number_of_games)
     for i in range(0, number_of_games):
         A = []
         H = []
-        print str(i+1)+'/'+str(number_of_games)
+        print(str(i+1)+'/'+str(number_of_games))
 
-        info_A = 		        soup.find_all('div', attrs = {'class':'el-div eventLine-team'})[i].find_all('div')[0].get_text().strip()
+        info_A =                soup.find_all('div', attrs = {'class':'el-div eventLine-team'})[i].find_all('div')[0].get_text().strip()
         hyphen_A =              info_A.find('-')
         paren_A =               info_A.find("(")
         team_A =                info_A[:hyphen_A - 1]
         pitcher_A =             info_A[hyphen_A + 2 : paren_A - 1]
         hand_A =                info_A[paren_A + 1 : -1]
 
-        info_H = 		        soup.find_all('div', attrs = {'class':'el-div eventLine-team'})[i].find_all('div')[2].get_text().strip()
+        info_H =                soup.find_all('div', attrs = {'class':'el-div eventLine-team'})[i].find_all('div')[2].get_text().strip()
         hyphen_H =              info_H.find('-')
         paren_H =               info_H.find("(")
         team_H =                info_H[:hyphen_H - 1]
@@ -314,50 +314,50 @@ def main(driver, season, inputdate = str(date.today()).replace('-','')):
     todays_date = inputdate
 
     ## store BeautifulSoup info for parsing
-    print "getting today's MoneyLine (1/6)"
+    print("getting today's MoneyLine (1/6)")
     soup_ml, time_ml = soup_url('ML', todays_date)
 
-    print "getting today's RunLine (2/6)"
+    print("getting today's RunLine (2/6)")
     soup_rl, time_rl = soup_url('RL', todays_date, driver)
 
-    print "getting today's totals (3/6)"
+    print("getting today's totals (3/6)")
     soup_tot, time_tot = soup_url('total', todays_date)
 
-    print "getting today's 1st-half MoneyLine (4/6)"
+    print("getting today's 1st-half MoneyLine (4/6)")
     soup_1h_ml, time_1h_ml = soup_url('1H', todays_date)
 
-    print "getting today's 1st-half RunLine (5/6)"
+    print("getting today's 1st-half RunLine (5/6)")
     soup_1h_rl, time_1h_rl = soup_url('1HRL', todays_date, driver)
 
-    print "getting today's 1st-half totals (6/6)"
+    print("getting today's 1st-half totals (6/6)")
     soup_1h_tot, time_1h_tot = soup_url('1Htotal', todays_date)
 
 
     ## Parse and Write
-    print "writing today's MoneyLine (1/6)"
+    print("writing today's MoneyLine (1/6)")
     df_ml = parse_and_write_data(soup_ml, todays_date, time_ml, not_ML = False)
     ## Change column names to make them unique
     df_ml.columns = ['key','day_game_nbr','date','ml_time','H/A','team','pitcher',
                      'hand','opp_team','opp_pitcher','opp_hand',
                      'ml_PIN','ml_FD','ml_HER','ml_BVD','ml_BOL']
 
-    print "writing today's RunLine (2/6)"
+    print("writing today's RunLine (2/6)")
     df_rl = parse_and_write_data(soup_rl, todays_date, time_rl)
     df_rl = select_and_rename(df_rl, 'rl')
 
-    print "writing today's totals (3/6)"
+    print("writing today's totals (3/6)")
     df_tot = parse_and_write_data(soup_tot, todays_date, time_tot)
     df_tot = select_and_rename(df_tot, 'tot')
 
-    print "writing today's 1st-half MoneyLine (4/6)"
+    print("writing today's 1st-half MoneyLine (4/6)")
     df_1h_ml = parse_and_write_data(soup_1h_ml, todays_date, time_1h_ml, not_ML = False)
     df_1h_ml = select_and_rename(df_1h_ml,'1h_ml')
 
-    print "writing today's 1st-half RunLine (5/6)"
+    print("writing today's 1st-half RunLine (5/6)")
     df_1h_rl = parse_and_write_data(soup_1h_rl, todays_date, time_1h_rl)
     df_1h_rl = select_and_rename(df_1h_rl,'1h_rl')
 
-    print "writing today's 1st-half totals (6/6)"
+    print("writing today's 1st-half totals (6/6)")
     df_1h_tot = parse_and_write_data(soup_1h_tot, todays_date, time_1h_tot)
     df_1h_tot = select_and_rename(df_1h_tot,'1h_tot')
 
@@ -378,17 +378,17 @@ def main(driver, season, inputdate = str(date.today()).replace('-','')):
         # tomorrows_date = str(datetime.date.today() + datetime.timedelta(days=1)).replace('-','')
         # ## store BeautifulSoup info for parsing
         # soup_ml, time_ml = soup_url('ML')
-        # print "getting tomorrow's MoneyLine"
+        # print("getting tomorrow's MoneyLine")
         # soup_rl, time_rl = soup_url('RL')
-        # print "getting tomorrow's RunLine"
+        # print("getting tomorrow's RunLine")
         # soup_tot, time_tot = soup_url('total')
-        # print "getting tomorrow's totals"
+        # print("getting tomorrow's totals")
         # soup_1h_ml, time_1h_ml = soup_url('1H')
-        # print "getting tomorrow's 1st-half MoneyLine"
+        # print("getting tomorrow's 1st-half MoneyLine")
         # soup_1h_rl, time_1h_rl = soup_url('1HRL')
-        # print "getting tomorrow's 1st-half RunLine"
+        # print("getting tomorrow's 1st-half RunLine")
         # soup_1h_tot, time_1h_tot = soup_url('1Htotal')
-        # print "getting tomorrow's 1st-half totals"
+        # print("getting tomorrow's 1st-half totals")
         # parse_and_write_data(soup_ml, todays_date, time_ml, f)
         # parse_and_write_data(soup_rl, todays_date, time_rl, f)
         # parse_and_write_data(soup_tot, todays_date, time_tot, f)
@@ -405,13 +405,13 @@ def run_main(driver, season, gdate):
     ## Get number of days in a month
     ## Convert month to two characters
     lookupdate = season+gdate
-    print lookupdate
+    print(lookupdate)
     try:
         main(driver, season, lookupdate)
     except IndexError:
-        print
-        print 'bad game -- ' + lookupdate
-        print
+        print()
+        print('bad game -- ' + lookupdate)
+        print()
         pass
 
 if __name__ == '__main__':
@@ -419,10 +419,10 @@ if __name__ == '__main__':
 
     
     
-    season = '2015'
+    season = date.datetime.now().year
 
     f = open(os.getcwd()+'\\SBR_MLB_'+season+'_Closing_Lines_daily.txt', 'a')
-    f.write('Game_ID,Date,Time_FG_ML,HA,Team,Team_SP,Team_SP_hand,Opp,Opp_SP,Opp_SP_hand')
+    f.write('Game_ID,Date,Time_FG_ML,HA,Team,Team_SP,Team_SP_hand,Opp,Opp_SP,Opp_SP_hand,')
     f.write('FG_ML_PIN,FG_ML_FD,FG_ML_HER,FG_ML_BVD,FG_ML_BOL,')
     f.write('Time_FG_RL,FG_RL_Line_PIN,FG_RL_Odds_PIN,FG_RL_Line_FD,FG_RL_Odds_FD,FG_RL_Line_HER,FG_RL_Odds_HER,FG_RL_Line_BVD,FG_RL_Odds_BVD,FG_RL_Line_BOL,FG_RL_Odds_BOL,')
     f.write('Time_FG_Tot,FG_Tot_Line_PIN,FG_Tot_Odds_PIN,FG_Tot_Line_FD,FG_Tot_Odds_FD,FG_Tot_Line_HER,FG_Tot_Odds_HER,FG_Tot_Line_BVD,FG_Tot_Odds_BVD,FG_Tot_Line_BOL,FG_Tot_Odds_BOL,')
@@ -442,12 +442,12 @@ if __name__ == '__main__':
     d0 = date.today()
     d1 = date.today()+datetime.timedelta(1)
         
-    xyzxyz = [(season, str(d0)[-5:-3]+str(d0)[-2:]), (season,str(d1)[-5:-3]+str(d1)[-2:])]
+    today_and_tomorrow_dates = [(season, str(d0)[-5:-3]+str(d0)[-2:]), (season,str(d1)[-5:-3]+str(d1)[-2:])]
 
     date.today()+datetime.timedelta(1)
 
 
-    for aaa in range(len(xyzxyz)):
-        run_main(driver, xyzxyz[aaa][0], xyzxyz[aaa][1])
+    for aaa in range(len(today_and_tomorrow_dates)):
+        run_main(driver, today_and_tomorrow_dates[aaa][0], today_and_tomorrow_dates[aaa][1])
 
     driver.close()
