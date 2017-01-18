@@ -1,17 +1,18 @@
-import socket
-import socks
+# import socket
+# fimport socks
 import requests
 from bs4 import BeautifulSoup
 import datetime
 from datetime import date
 import time
 from pandas import DataFrame
+import os
 
-def connectTor():
-  ## Connect to Tor for privacy purposes
-     socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, '127.0.0.1', 9150, True)
-     socket.socket = socks.socksocket
-     print "connected to Tor!"
+# def connectTor():
+#   ## Connect to Tor for privacy purposes
+#      socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, '127.0.0.1', 9150, True)
+#      socket.socket = socks.socksocket
+#      print "connected to Tor!"
 
 def soup_url(type_of_line, tdate = str(date.today()).replace('-','')):
 ## get html code for odds based on desired line type and date
@@ -28,7 +29,7 @@ def soup_url(type_of_line, tdate = str(date.today()).replace('-','')):
     # elif type_of_line == '1Htotal':
         # url_addon = 'totals/1st-half/'
     else:
-        print "Wrong url_addon"
+        print("Wrong url_addon")
     url = 'http://www.sportsbookreview.com/betting-odds/nba-basketball/' + url_addon + '?date=' + tdate
     now = datetime.datetime.now()
     raw_data = requests.get(url)
@@ -75,14 +76,14 @@ def parse_and_write_data(soup, date, time, not_ML = True):
     for i in range(0, number_of_games):
         A = []
         H = []
-        print str(i+1)+'/'+str(number_of_games)
+        print(str(i+1)+'/'+str(number_of_games))
         
         ## Gather all useful data from unique books
         # consensus_data = 	soup.find_all('div', 'el-div eventLine-consensus')[i].get_text()
         info_A = 		        soup.find_all('div', attrs = {'class':'el-div eventLine-team'})[i].find_all('div')[0].get_text().strip()
-        hyphen_A =              info_A.find('-')
-        paren_A =               info_A.find("(")
-        team_A =                info_A[:hyphen_A - 1]
+        # hyphen_A =              info_A.find('-')
+        # paren_A =               info_A.find("(")
+        team_A =                info_A
         # pitcher_A =             info_A[hyphen_A + 2 : paren_A - 1]
         # hand_A =                info_A[paren_A + 1 : -1]
         ## get line/odds info for unique book. Need error handling to account for blank data
@@ -107,9 +108,9 @@ def parse_and_write_data(soup, date, time, not_ML = True):
         except IndexError:
             betonline_A = ''
         info_H = 		        soup.find_all('div', attrs = {'class':'el-div eventLine-team'})[i].find_all('div')[1].get_text().strip()
-        hyphen_H =              info_H.find('-')
-        paren_H =               info_H.find("(")
-        team_H =                info_H[:hyphen_H - 1]
+        # hyphen_H =              info_H.find('-')
+        # paren_H =               info_H.find("(")
+        team_H =                info_H
         # pitcher_H =             info_H[hyphen_H + 2 : paren_H - 1]
         # hand_H =                info_H[paren_H + 1 : -1]
         try:
@@ -132,42 +133,42 @@ def parse_and_write_data(soup, date, time, not_ML = True):
             betonline_H = 		book_line('1096', i, 1)
         except IndexError:
             betonline_H = ''
-        if team_H == 'Detroit':
-            team_H = 'Detroit'
+        if team_H ==   'Detroit':
+            team_H =   'Detroit'
         elif team_H == 'Indiana':
-            team_H = 'Indiana'
+            team_H =   'Indiana'
         elif team_H == 'Brooklyn':
-            team_H = 'Brooklyn'
+            team_H =   'Brooklyn'
         elif team_H == 'L.A. Lakers':
-            team_H = 'L.A. Lakers'
+            team_H =   'L.A. Lakers'
         elif team_H == 'Washington':
-            team_H = 'Washington'
+            team_H =   'Washington'
         elif team_H == 'Miami':
-            team_H = 'Miami'
+            team_H =   'Miami'
         elif team_H == 'Minnesota':
-            team_H = 'Minnesota'
+            team_H =   'Minnesota'
         elif team_H == 'Chicago':
-            team_H = 'Chicago'
+            team_H =   'Chicago'
         elif team_H == 'Oklahoma City':
-            team_H = 'Oklahoma City'
-        if team_A == 'New Orleans':
-            team_A = 'New Orleans'
+            team_H =   'Oklahoma City'
+        if team_A ==   'New Orleans':
+            team_A =   'New Orleans'
         elif team_A == 'Houston':
-            team_A = 'Houston'
+            team_A =   'Houston'
         elif team_A == 'Dallas':
-            team_A = 'Dallas'
+            team_A =   'Dallas'
         elif team_A == 'Cleveland':
-            team_A = 'Cleveland'
+            team_A =   'Cleveland'
         elif team_A == 'L.A. Clippers':
-            team_A = 'L.A. Clippers'
+            team_A =   'L.A. Clippers'
         elif team_A == 'Golden State':
-            team_A = 'Golden State'
+            team_A =   'Golden State'
         elif team_A == 'Denver':
-            team_A = 'Denver'
+            team_A =   'Denver'
         elif team_A == 'Boston':
-            team_A = 'Boston'
+            team_A =   'Boston'
         elif team_A == 'Milwaukee':
-            team_A = 'Milwaukee'            
+            team_A =   'Milwaukee'            
        # A.append(str(date) + '_' + team_A.replace(u'\xa0',' ') + '_' + team_H.replace(u'\xa0',' '))
         A.append(date)
         A.append(time)
@@ -289,7 +290,7 @@ def select_and_rename(df, text):
     
 
 def main():
-    connectTor()
+    # connectTor()
 
     ## Get today's lines
     todays_date = str(date.today()).replace('-','')
@@ -299,11 +300,11 @@ def main():
 
     ## store BeautifulSoup info for parsing
     soup_ml, time_ml = soup_url('ML', todays_date)
-    print "getting today's MoneyLine (1/6)"
+    print("getting today's MoneyLine (1/6)")
     soup_rl, time_rl = soup_url('Spreads', todays_date)
-    print "getting today's Spreads (2/6)"
+    print("getting today's Spreads (2/6)")
     soup_tot, time_tot = soup_url('Totals', todays_date)
-    print "getting today's totals (3/6)"
+    print("getting today's totals (3/6)")
     # soup_1h_ml, time_1h_ml = soup_url('1H', todays_date)
     # print "getting today's 1st-half MoneyLine (4/6)"
     # soup_1h_rl, time_1h_rl = soup_url('1HRL', todays_date)
@@ -313,18 +314,19 @@ def main():
 
     
     #### Each df_xx creates a data frame for a bet type
-    print "writing today's MoneyLine (1/6)"
+    print("writing today's MoneyLine (1/6)")
     df_ml = parse_and_write_data(soup_ml, todays_date, time_ml, not_ML = False)
+    # print(df_ml)
     ## Change column names to make them unique
     df_ml.columns = ['key','date','ml_time','team',
                      'opp_team',
                      'ml_PIN','ml_FD','ml_HER','ml_BVD','ml_BOL']    
 
-    print "writing today's RunLine (2/6)"
+    print("writing today's RunLine (2/6)")
     df_rl = parse_and_write_data(soup_rl, todays_date, time_rl)
     df_rl = select_and_rename(df_rl, 'rl')
     
-    print "writing today's totals (3/6)"
+    print("writing today's totals (3/6)")
     df_tot = parse_and_write_data(soup_tot, todays_date, time_tot)
     df_tot = select_and_rename(df_tot, 'tot')
     
@@ -339,7 +341,6 @@ def main():
     # print "writing today's 1st-half totals (6/6)"
     # df_1h_tot = parse_and_write_data(soup_1h_tot, todays_date, time_1h_tot)
     # df_1h_tot = select_and_rename(df_1h_tot,'1h_tot')
-    
     ## Merge all DataFrames together to allow for simple printout
     write_df = df_ml
     write_df = write_df.merge(
@@ -353,7 +354,7 @@ def main():
     # write_df = write_df.merge(
                 # df_1h_tot, how='left', on = ['key','team','pitcher','hand','opp_team'])
     
-    with open('\SBR_NBA_Lines.csv', 'a') as f:
+    with open(os.getcwd()+'\SBR_NBA_Lines.csv', 'a') as f:
         write_df.to_csv(f, index=False)#, header = False)
   
     ## Code to pull tomorrow's data --- work in progress
