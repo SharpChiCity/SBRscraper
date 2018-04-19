@@ -29,7 +29,10 @@ def soup_url(type_of_line, tdate = str(date.today()).replace('-','')):
     now = datetime.datetime.now()
     raw_data = requests.get(url)
     soup_big = BeautifulSoup(raw_data.text, 'html.parser')
-    soup = soup_big.find_all('div', id='OddsGridModule_3')[0]
+    try:
+        soup = soup_big.find_all('div', id='OddsGridModule_3')[0]
+    except:
+        soup = None
     timestamp = time.strftime("%H:%M:%S")
     return soup, timestamp
 
@@ -244,6 +247,49 @@ def select_and_rename(df, text):
                       text+'_BVD_line',text+'_BVD_odds',
                       text+'_BOL_line',text+'_BOL_odds']
     return df
+
+def blank_out_df(df, text):
+    ## Select only useful column names from a DataFrame
+    ## Rename column names so that when merged, each df will be unique 
+    if text[-2:] == 'ml':
+        df = df[['key','time','team','pitcher','hand','opp_team',
+                 'pinnacle','5dimes','heritage','bovada','betonline']]
+    ## Change column names to make them unique
+        df.columns = ['key',text+'_time','team','pitcher','hand','opp_team',
+                      text+'_PIN',text+'_FD',text+'_HER',text+'_BVD',text+'_BOL']
+    
+        df[text+'_PIN'] = ""
+        df[text+'_FD']  = ""
+        df[text+'_HER'] = ""
+        df[text+'_BVD'] = ""
+        df[text+'_BOL'] = ""
+
+    else:
+        df = df[['key','time','team','pitcher','hand','opp_team',
+                 'pinnacle_line','pinnacle_odds',
+                 '5dimes_line','5dimes_odds',
+                 'heritage_line','heritage_odds',
+                 'bovada_line','bovada_odds',
+                 'betonline_line','betonline_odds']]
+        df.columns = ['key',text+'_time','team','pitcher','hand','opp_team',
+                      text+'_PIN_line',text+'_PIN_odds',
+                      text+'_FD_line',text+'_FD_odds',
+                      text+'_HER_line',text+'_HER_odds',
+                      text+'_BVD_line',text+'_BVD_odds',
+                      text+'_BOL_line',text+'_BOL_odds']
+
+        df[text+'_PIN_line'] = ""
+        df[text+'_FD_line']  = ""
+        df[text+'_HER_line'] = ""
+        df[text+'_BVD_line'] = ""
+        df[text+'_BOL_line'] = ""
+        df[text+'_PIN_odds'] = ""
+        df[text+'_FD_odds']  = ""
+        df[text+'_HER_odds'] = ""
+        df[text+'_BVD_odds'] = ""
+        df[text+'_BOL_odds'] = ""
+
+    return df
     
 
 def main():
@@ -320,13 +366,21 @@ def main():
     df_1h_ml = select_and_rename(df_1h_ml,'1h_ml')
     
     print("writing today's 1st-half RunLine (5/6)")
-    df_1h_rl = parse_and_write_data(soup_1h_rl, todays_date, time_1h_rl)
-    df_1h_rl = select_and_rename(df_1h_rl,'1h_rl')
+    try:
+        df_1h_rl = parse_and_write_data(soup_1h_rl, todays_date, time_1h_rl)
+        df_1h_rl = select_and_rename(df_1h_rl,'1h_rl')
+    except:
+        df_1h_rl = parse_and_write_data(soup_rl, todays_date, time_rl)
+        df_1h_rl = blank_out_df(df_1h_rl,'1h_rl')
     
     print("writing today's 1st-half totals (6/6)")
-    df_1h_tot = parse_and_write_data(soup_1h_tot, todays_date, time_1h_tot)
-    df_1h_tot = select_and_rename(df_1h_tot,'1h_tot')
-    
+    try:    
+        df_1h_tot = parse_and_write_data(soup_1h_tot, todays_date, time_1h_tot)
+        df_1h_tot = select_and_rename(df_1h_tot,'1h_tot')
+    except:
+        df_1h_tot = parse_and_write_data(soup_tot, todays_date, time_tot)
+        df_1h_tot = blank_out_df(df_1h_tot,'1h_tot')
+
     ## Merge all DataFrames together to allow for simple printout
     write_df = df_ml
     write_df = write_df.merge(
