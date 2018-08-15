@@ -25,7 +25,7 @@ def soup_url(type_of_line, tdate = str(date.today()).replace('-','')):
     web_url['1Htotal'] = 'totals/1st-half'
     url_addon = web_url[type_of_line]
 
-    url = 'http://www.sportsbookreview.com/betting-odds/mlb-baseball/' + url_addon + '?date=' + tdate
+    url = 'https://classic.sportsbookreview.com/betting-odds/mlb-baseball/' + url_addon + '?date=' + tdate
     now = datetime.datetime.now()
     raw_data = requests.get(url)
     soup_big = BeautifulSoup(raw_data.text, 'html.parser')

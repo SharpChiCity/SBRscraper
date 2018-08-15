@@ -30,7 +30,7 @@ def soup_url(type_of_line, tdate = str(date.today()).replace('-','')):
         # url_addon = 'totals/1st-half/'
     else:
         print("Wrong url_addon")
-    url = 'http://www.sportsbookreview.com/betting-odds/nba-basketball/' + url_addon + '?date=' + tdate
+    url = 'https://classic.sportsbookreview.com/betting-odds/nba-basketball/' + url_addon + '?date=' + tdate
     now = datetime.datetime.now()
     raw_data = requests.get(url)
     soup_big = BeautifulSoup(raw_data.text, 'html.parser')
