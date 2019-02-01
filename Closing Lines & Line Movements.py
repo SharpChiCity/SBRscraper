@@ -390,27 +390,62 @@ def main(driver, season, inputdate=str(date.today()).replace('-', '')):
         write_df.to_csv(f, index=False, header=False)
 
 
+def write_date(filename, dt, sport='MLB'):
+    filename = os.getcwd() + '\\SBR_{}_Lines_{}_games.txt'.format(sport, filename)
+    f = open(filename, 'a')
+    f.write(dt + '\n')
+    f.close()
+
+
+def check_date(dt, sport='MLB'):
+    filename = os.getcwd() + '\\SBR_{}_Lines_{}_games.txt'.format(sport, 'good')
+    f = open(filename, 'r')
+
+    good = f.readlines()
+    f.close()
+
+    if dt in good:
+        return True
+
+    return False
+
+
 def run_main(driver, season, month=1):
-    bad_games = []
     # Get number of days in a month
     month = int(month)
-    days_in_month = 31 if (month == 1 or month == 3 or month == 5 or month == 7 or month == 8 or month == 10 or month == 12) else 30
+    days_in_month_lookup = {
+        1: 31,
+        2: 28,
+        3: 31,
+        4: 30,
+        5: 31,
+        6: 30,
+        7: 31,
+        8: 31,
+        9: 30,
+        10: 31,
+        11: 30,
+        12: 31
+    }
+    days_in_month = days_in_month_lookup[month]
     # Convert month to two characters
-    month = ('0' if len(str(month + 1)) == 1 else '') + str(month + 1)
+    month = str(month + 1).rjust(2, '0')
     for z in range(days_in_month):
-        z = ('0' if len(str(z + 1)) == 1 else '') + str(z + 1)
+        z = str(z + 1).rjust(2, '0')
         lookupdate = season + month + z
-        print(lookupdate)
-        try:
-            main(driver, season, lookupdate)
-        except IndexError:
-            f=open(os.getcwd()+'\\SBR_MLB_Lines_bad_games.txt', "a")
-            f.write(lookupdate+'\n')
-            f.close()
-            print()
-            print('bad game -- ' + lookupdate)
-            print()
-            pass
+        lookupdate_to_write = '{}/{}/{}'.format(season, month, z)
+        print(lookupdate_to_write)
+
+        if not check_date(dt=lookupdate_to_write):
+            try:
+                main(driver, season, lookupdate)
+                write_date(filename='good', dt=lookupdate_to_write)
+            except IndexError:
+                write_date(filename='good', dt=lookupdate_to_write)
+                print()
+                print('bad game -- ' + lookupdate)
+                print()
+                pass
 
 
 if __name__ == '__main__':
@@ -420,7 +455,7 @@ if __name__ == '__main__':
     end_month = input("Please type the last month for which you would like to pull data (1-12):")
 
     # Add Column Headers
-    f = open(os.getcwd()+'\\SBR_MLB_Closing_Lines_' + season + '.txt', 'a')
+    f = open(os.getcwd() + '\\SBR_MLB_Closing_Lines_' + season + '.txt', 'a')
     f.write('Game_ID,Date,Time_FG_ML,HA,Team,Team_SP,Team_SP_hand,Opp,Opp_SP,Opp_SP_hand,')
     f.write('FG_ML_PIN,FG_ML_FD,FG_ML_HER,FG_ML_BVD,FG_ML_BOL,')
     f.write('Time_FG_RL,FG_RL_Line_PIN,FG_RL_Odds_PIN,FG_RL_Line_FD,FG_RL_Odds_FD,FG_RL_Line_HER,FG_RL_Odds_HER,FG_RL_Line_BVD,FG_RL_Odds_BVD,FG_RL_Line_BOL,FG_RL_Odds_BOL,')
@@ -431,7 +466,7 @@ if __name__ == '__main__':
     f.write('\n')
     f.close()
 
-    f = open(os.getcwd()+'\\SBR_MLB_Lines_' + season + '_line_moves.txt', 'a')
+    f = open(os.getcwd() + '\\SBR_MLB_Lines_' + season + '_line_moves.txt', 'a')
     f.write('Date,Team,Team_SP,Opp,Opp_SP,Bet_Length,Bet_Type,Line_Move_Time,Over_Under,Line,Odds')
     f.write('\n')
     f.close()
@@ -441,7 +476,7 @@ if __name__ == '__main__':
     from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
     import os
 
- #   torexe = os.popen(r'/home/kc/Downloads/tor-browser_en-US/Browser/TorBrowser/Tor/tor.exe')
+    # torexe = os.popen(r'/home/kc/Downloads/tor-browser_en-US/Browser/TorBrowser/Tor/tor.exe')
     profile = FirefoxProfile(r'/home/kc/Downloads/tor-browser_en-US/Browser/TorBrowser/Data/Browser/profile.default')
     profile.set_preference('network.proxy.type', 1)
     profile.set_preference('network.proxy.socks', '127.0.0.1')
@@ -449,17 +484,14 @@ if __name__ == '__main__':
     profile.set_preference("network.proxy.socks_remote_dns", False)
     profile.update_preferences()
     driver = webdriver.Firefox(firefox_profile=profile)
-    driver.get("http://check.torproject.org")
+    # driver.get("http://check.torproject.org")
 
-
-    ##  
-
+    #
     time.sleep(5)
-    driver = webdriver.Firefox(profile)
-
+    # driver = webdriver.Firefox(profile)
 
     # driver = webdriver.Chrome("C:/users/kj/desktop/chromedriver.exe")
-    time.sleep(3)
+    # time.sleep(3)
     # to uitilize a headless driver, download and install phantomjs and use below to open driver instead of above line
     # download link -- http://phantomjs.org/download.html
     # driver = webdriver.PhantomJS(r"C:\Users\Monstar\Python\phantomjs-2.0.0\bin\phantomjs.exe")
