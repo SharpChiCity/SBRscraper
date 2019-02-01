@@ -468,6 +468,8 @@ def run_main(driver, season, month=1):
             try:
                 main(driver, season, lookupdate)
                 write_date(filename='good', dt=lookupdate_to_write)
+            except KeyboardInterrupt:
+                break
             except:
                 write_date(filename='bad', dt=lookupdate_to_write)
                 print()
