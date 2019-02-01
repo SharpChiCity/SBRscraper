@@ -441,7 +441,6 @@ if __name__ == '__main__':
     from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
     import os
 
-
  #   torexe = os.popen(r'/home/kc/Downloads/tor-browser_en-US/Browser/TorBrowser/Tor/tor.exe')
     profile = FirefoxProfile(r'/home/kc/Downloads/tor-browser_en-US/Browser/TorBrowser/Data/Browser/profile.default')
     profile.set_preference('network.proxy.type', 1)
