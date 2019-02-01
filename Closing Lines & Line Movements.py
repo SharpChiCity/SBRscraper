@@ -320,28 +320,35 @@ def select_and_rename(df, text):
 
 
 def team_name_check(team_name):
-        new_team_name = 'LAD' if team_name == 'LA' else \
-                        'SDG' if team_name == 'SD' else \
-                        'SFO' if team_name == 'SF' else \
-                        'NYM' if team_name == 'NY' else \
-                        'KCA' if team_name == 'KC' else \
-                        'TBA' if team_name == 'TB' else \
-                        'CHW' if team_name == 'CWS' else \
-                        'CHC' if team_name == 'CHI' else \
-                        'WAS' if team_name == 'WSH' else \
-                        team_name
+    """lookup teams wtih weird acronyms"""
+    lookup = {
+        'LA': 'LAD',
+        'SD': 'SDG',
+        'SF': 'SFO',
+        'NY': 'NYM',
+        'KC': 'KCA',
+        'TB': 'TBA',
+        'CWS': 'CHW',
+        'CHI': 'CHC',
+        'WSH': 'WAS'
+    }
 
-        return new_team_name
+    try:
+        new_team_name = lookup[team_name]
+    except:
+        new_team_name = team_name
+
+    return new_team_name
 
 
 def main(profile, season, inputdate=str(date.today()).replace('-', '')):
     """
     Get lines for a given day.
 
-    1) store all soup data for each bet type in their own variable
+    1) soup_*: store all soup data for each bet type in their own variable
         a) RL and 1HRL get loaded via their own special process
         b) the rest are just called via requests
-    2) 
+    2) parse_and_write_data: 
     """
     driver = webdriver.Firefox(firefox_profile=profile)
 
@@ -526,4 +533,7 @@ if __name__ == '__main__':
     # driver = webdriver.PhantomJS(r"C:\Users\Monstar\Python\phantomjs-2.0.0\bin\phantomjs.exe")
 
     for y in range(int(start_month) - 1, int(end_month)):
-        run_main(profile, season, y)
+        try:
+            run_main(profile, season, y)
+        except KeyboardInterrupt:
+            break
