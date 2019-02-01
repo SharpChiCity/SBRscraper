@@ -12,35 +12,37 @@ import re
 import os
 
 
-def connectTor():
-# Connect to Tor for privacy purposes
-    socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, '127.0.0.1', 9150, True)
-    socket.socket = socks.socksocket
-    print("connected to Tor!")
+# def connectTor():
+#     # Connect to Tor for privacy purposes
+#     socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, '127.0.0.1', 9150, True)
+#     socket.socket = socks.socksocket
+#     print("connected to Tor!")
 
 
 def soup_url(type_of_line, tdate=str(date.today()).replace('-', ''), driver=None):
     # get html code for odds based on desired line type and date
-    line_types = [
-        ('ML', ''),
-        ('RL', 'pointspread/'),
-        ('total', 'totals/'),
-        ('1H', '1st-half/'),
-        ('1HRL', 'pointspread/1st-half/'),
-        ('1Htotal', 'totals/1st-half/')
-    ]
-    url_addon = [lt[1] for num, lt in enumerate(line_types) if lt[0] == type_of_line][0]
+    line_types = {
+        'ML': '',
+        'RL': 'pointspread/',
+        'total': 'totals/',
+        '1H': '1st-half/',
+        '1HRL': 'pointspread/1st-half/',
+        '1Htotal': 'totals/1st-half/'
+    }
+    url_addon = line_types[type_of_line]
     url = 'http://classic.sportsbookreview.com/betting-odds/mlb-baseball/' + url_addon + '?date=' + tdate
     timestamp = time.strftime("%H:%M:%S")
     # needs to run through line_movement_soup to get
+
     driver.get(url)
 
-    if type_of_line == 'RL' or type_of_line == '1HRL':
+    if type_of_line in ('RL', '1HRL'):
         game_half = 'Full Game' if type_of_line == 'RL' else '1st Half'
         soup_big = BeautifulSoup(driver.page_source, 'html.parser')
         soup = soup_big.find_all('div', id='OddsGridModule_3')[0]
         line_movement_soup(soup, tdate, driver, game_half)
     else:
+        # ML, total, 1H, 1Htotal
         soup_big = BeautifulSoup(requests.get(url).text, 'html.parser')
         soup = soup_big.find_all('div', id='OddsGridModule_3')[0]
 
@@ -59,7 +61,7 @@ def line_movement_soup(soup, game_date, driver, game_half):
     # Pitcher_Names to pass to line movement file
     A_pit_list = []
     H_pit_list = []
-    all_pit_info = soup.find_all('div', attrs={'class': 'el-div eventLine-team'})
+    all_pit_info = sou*p.find_all('div', attrs={'class': 'el-div eventLine-team'})
     for ngames in range(len(all_pit_info)):
         A_pit_info  = all_pit_info[ngames].find_all('div')[1].get_text().strip()
         H_pit_info  = all_pit_info[ngames].find_all('div')[2].get_text().strip()
@@ -138,23 +140,27 @@ def get_line_move_data(soup,game_date,game_half,book_name,a_pit_name,h_pit_name,
         for r in reversed(range(len(row))):
             row_data = row[r].find_all('td')
             time_of_move = row_data[0].get_text()
-            for dub in range(1,3):
+            for dub in range(1, 3):
                 line_change_list = []
                 line_change_list.extend([game_date])
                 if dub == 1:
-                    o_u_checker = 'over' if t==2 else ''
-                    line_change_list.extend([away_team,a_pit_name,home_team, h_pit_name])
+                    o_u_checker = 'over' if t == 2 else ''
+                    line_change_list.extend([away_team, a_pit_name, home_team, h_pit_name])
                 else:
-                    o_u_checker = 'under' if t==2 else ''
-                    line_change_list.extend([home_team,h_pit_name,away_team,a_pit_name])
+                    o_u_checker = 'under' if t == 2 else ''
+                    line_change_list.extend([home_team, h_pit_name, away_team, a_pit_name])
                 line_change_list.extend([game_half, stats_table_name, time_of_move, o_u_checker])
                 prettify_odds(row_data, dub)
-                df_line_moves.loc[len(df_line_moves)+1] = ([line_change_list[j].replace(u'\xa0', ' ').replace(u'\xbd', '.5') for j in range(len(line_change_list))])
+                df_line_moves.loc[len(df_line_moves) + 1] = ([line_change_list[j].replace(u'\xa0', ' ').replace(u'\xbd', '.5') for j in range(len(line_change_list))])
     return df_line_moves
 
-def parse_and_write_data(soup, date, time_of_move, not_ML = True):
-# Parse HTML to gather line data by book
-    '''
+
+def parse_and_write_data(soup, date, time_of_move, not_ML=True):
+    """
+    Parse HTML to gather line data by book
+    ML lines are simpler to parse, so we need an option to know which type of
+    parsing needs to be done.
+
     using ['238', '19', '999996', '1096', '169']
     BookID  BookName
     238     Pinnacle
@@ -166,30 +172,38 @@ def parse_and_write_data(soup, date, time_of_move, not_ML = True):
     123     BetDSI
     139     Youwager
     999991  SIA
-    '''
+    """
     def book_line(book_id, line_id, homeaway):
-        # Get Line info from book ID
+        """
+        Get Line info given a book ID.
+        Since each book has their own html value, this is how we can parse each book separately
+        """           
         try:
-            lo0 = soup.find_all('div', attrs={'class': 'el-div eventLine-book', 'rel':book_id})[line_id].find_all('div')[homeaway].get_text().strip()
+            lo0 = soup.find_all('div', attrs={'class': 'el-div eventLine-book', 'rel': book_id})
+            lo0 = lo0[line_id]
+            lo0 = lo0.find_all('div')
+            lo0 = lo0[homeaway]
+            lo0 = lo0.get_text().strip()
             lo1 = lo0.replace(u'\xa0', ' ').replace(u'\xbd', '.5')
-            line = lo1[:lo1.find(' ')]
-            odds = lo1[lo1.find(' ') + 1:]
+            line_split = lo1.find(' ')
+            line = lo1[:line_split]
+            odds = lo1[line_split + 1:]
         except IndexError:
             line = ''
             odds = ''
-        return line,odds
+        return line, odds
 
     if not_ML:
         df = DataFrame(
-                columns=('key', 'date', 'time', 'H/A',
-                         'team', 'pitcher', 'hand',
-                         'opp_team', 'opp_pitcher',
-                         'opp_hand',
-                         'pinnacle_line', 'pinnacle_odds',
-                         '5dimes_line', '5dimes_odds',
-                         'heritage_line', 'heritage_odds',
-                         'bovada_line', 'bovada_odds',
-                         'betonline_line', 'betonline_odds'))
+            columns=('key', 'date', 'time', 'H/A',
+                     'team', 'pitcher', 'hand',
+                     'opp_team', 'opp_pitcher',
+                     'opp_hand',
+                     'pinnacle_line', 'pinnacle_odds',
+                     '5dimes_line', '5dimes_odds',
+                     'heritage_line', 'heritage_odds',
+                     'bovada_line', 'bovada_odds',
+                     'betonline_line', 'betonline_odds'))
     else:
         df = DataFrame(
             columns=('key', 'date', 'time', 'H/A',
@@ -320,56 +334,63 @@ def team_name_check(team_name):
         return new_team_name
 
 
-def main(driver, season, inputdate=str(date.today()).replace('-', '')):
-    # Get today's lines
-    todays_date = str(date.today()).replace('-', '')
-    todays_date = inputdate
+def main(profile, season, inputdate=str(date.today()).replace('-', '')):
+    """
+    Get lines for a given day.
+
+    1) store all soup data for each bet type in their own variable
+        a) RL and 1HRL get loaded via their own special process
+        b) the rest are just called via requests
+    2) 
+    """
+    driver = webdriver.Firefox(firefox_profile=profile)
+
 
     # store BeautifulSoup info for parsing
     print("getting today's MoneyLine (1/6)")
-    soup_ml, time_ml = soup_url('ML', todays_date, driver)
+    soup_ml, time_ml = soup_url('ML', inputdate, driver)
 
     print("getting today's RunLine (2/6)")
-    soup_rl, time_rl = soup_url('RL', todays_date, driver)
+    soup_rl, time_rl = soup_url('RL', inputdate, driver)
 
     print("getting today's totals (3/6)")
-    soup_tot, time_tot = soup_url('total', todays_date, driver)
+    soup_tot, time_tot = soup_url('total', inputdate, driver)
 
     print("getting today's 1st-half MoneyLine (4/6)")
-    soup_1h_ml, time_1h_ml = soup_url('1H', todays_date, driver)
+    soup_1h_ml, time_1h_ml = soup_url('1H', inputdate, driver)
 
     print("getting today's 1st-half RunLine (5/6)")
-    soup_1h_rl, time_1h_rl = soup_url('1HRL', todays_date, driver)
+    soup_1h_rl, time_1h_rl = soup_url('1HRL', inputdate, driver)
 
     print("getting today's 1st-half totals (6/6)")
-    soup_1h_tot, time_1h_tot = soup_url('1Htotal', todays_date, driver)
+    soup_1h_tot, time_1h_tot = soup_url('1Htotal', inputdate, driver)
 
     # Parse and Write
     print("writing today's MoneyLine (1/6)")
-    df_ml = parse_and_write_data(soup_ml, todays_date, time_ml, not_ML=False)
+    df_ml = parse_and_write_data(soup_ml, inputdate, time_ml, not_ML=False)
     # Change column names to make them unique
     df_ml.columns = ['key', 'date', 'ml_time', 'H/A', 'team', 'pitcher',
                      'hand', 'opp_team', 'opp_pitcher', 'opp_hand',
                      'ml_PIN', 'ml_FD', 'ml_HER', 'ml_BVD', 'ml_BOL']
 
     print("writing today's RunLine (2/6)")
-    df_rl = parse_and_write_data(soup_rl, todays_date, time_rl)
+    df_rl = parse_and_write_data(soup_rl, inputdate, time_rl)
     df_rl = select_and_rename(df_rl, 'rl')
 
     print("writing today's totals (3/6)")
-    df_tot = parse_and_write_data(soup_tot, todays_date, time_tot)
+    df_tot = parse_and_write_data(soup_tot, inputdate, time_tot)
     df_tot = select_and_rename(df_tot, 'tot')
 
     print("writing today's 1st-half MoneyLine (4/6)")
-    df_1h_ml = parse_and_write_data(soup_1h_ml, todays_date, time_1h_ml, not_ML =False)
+    df_1h_ml = parse_and_write_data(soup_1h_ml, inputdate, time_1h_ml, not_ML =False)
     df_1h_ml = select_and_rename(df_1h_ml, '1h_ml')
 
     print("writing today's 1st-half RunLine (5/6)")
-    df_1h_rl = parse_and_write_data(soup_1h_rl, todays_date, time_1h_rl)
+    df_1h_rl = parse_and_write_data(soup_1h_rl, inputdate, time_1h_rl)
     df_1h_rl = select_and_rename(df_1h_rl, '1h_rl')
 
     print("writing today's 1st-half totals (6/6)")
-    df_1h_tot = parse_and_write_data(soup_1h_tot, todays_date, time_1h_tot)
+    df_1h_tot = parse_and_write_data(soup_1h_tot, inputdate, time_1h_tot)
     df_1h_tot = select_and_rename(df_1h_tot, '1h_tot')
 
     # Write to Dataframes
@@ -389,6 +410,7 @@ def main(driver, season, inputdate=str(date.today()).replace('-', '')):
     with open(os.getcwd() + '\\SBR_MLB_Closing_Lines_' + season + '.txt', 'a') as f:
         write_df.to_csv(f, index=False, header=False)
 
+    driver.close()
 
 def write_date(filename, dt, sport='MLB'):
     filename = os.getcwd() + '/SBR_{}_Lines_{}_games.txt'.format(sport, filename)
@@ -411,7 +433,13 @@ def check_date(dt, sport='MLB'):
 
 
 def run_main(driver, season, month=1):
-    # Get number of days in a month
+    """
+    This function loops over every date from the beginning of the entered month.
+
+    It also stores a list of completed or failed dates for future iterations as this
+    is a slow program that could take multiple hours to run. This provides a way to avoid
+    rerunning the same day.
+    """
     month = int(month)
     days_in_month_lookup = {
         1: 31,
@@ -440,8 +468,8 @@ def run_main(driver, season, month=1):
             try:
                 main(driver, season, lookupdate)
                 write_date(filename='good', dt=lookupdate_to_write)
-            except IndexError:
-                write_date(filename='good', dt=lookupdate_to_write)
+            except:
+                write_date(filename='bad', dt=lookupdate_to_write)
                 print()
                 print('bad game -- ' + lookupdate)
                 print()
@@ -483,7 +511,6 @@ if __name__ == '__main__':
     profile.set_preference('network.proxy.socks_port', 9150)
     profile.set_preference("network.proxy.socks_remote_dns", False)
     profile.update_preferences()
-    driver = webdriver.Firefox(firefox_profile=profile)
     # driver.get("http://check.torproject.org")
 
     #
@@ -497,6 +524,4 @@ if __name__ == '__main__':
     # driver = webdriver.PhantomJS(r"C:\Users\Monstar\Python\phantomjs-2.0.0\bin\phantomjs.exe")
 
     for y in range(int(start_month) - 1, int(end_month)):
-        run_main(driver, season, y)
-
-    driver.close()
+        run_main(profile, season, y)
