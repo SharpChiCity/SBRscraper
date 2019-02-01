@@ -30,7 +30,7 @@ def soup_url(type_of_line, tdate=str(date.today()).replace('-', ''), driver=None
         ('1Htotal', 'totals/1st-half/')
     ]
     url_addon = [lt[1] for num, lt in enumerate(line_types) if lt[0] == type_of_line][0]
-    tdate
+    url = 'http://classic.sportsbookreview.com/betting-odds/mlb-baseball/' + url_addon + '?date=' + tdate
     timestamp = time.strftime("%H:%M:%S")
     # needs to run through line_movement_soup to get
     driver.get(url)
@@ -441,11 +441,11 @@ if __name__ == '__main__':
     from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
     import os
 
-    torexe = os.popen(r'C:\Users\kj\Desktop\Tor Browser\Browser\TorBrowser\Tor\tor.exe')
+    # torexe = os.popen(r'C:\Users\kj\Desktop\Tor Browser\Browser\TorBrowser\Tor\tor.exe')
     profile = FirefoxProfile(r'C:\Users\kj\Desktop\Tor Browser\Browser\TorBrowser\Data\Browser\profile.default')
     profile.set_preference('network.proxy.type', 1)
     profile.set_preference('network.proxy.socks', '127.0.0.1')
-    profile.set_preference('network.proxy.socks_port', 9050)
+    profile.set_preference('network.proxy.socks_port', 9150)
     profile.set_preference("network.proxy.socks_remote_dns", False)
     profile.update_preferences()
     driver = webdriver.Firefox(firefox_profile=profile, executable_path=r'C:\users\kj\downloads\geckodriver.exe')
