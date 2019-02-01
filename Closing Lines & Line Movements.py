@@ -46,7 +46,7 @@ def soup_url(type_of_line, tdate=str(date.today()).replace('-', ''), driver=None
         soup_big = BeautifulSoup(requests.get(url).text, 'html.parser')
         soup = soup_big.find_all('div', id='OddsGridModule_3')[0]
         game_time = soup.find_all('div', attrs={'class': 'el-div eventLine-time'})[i].find_all('div')[0].get_text().strip()
-        if type_of_line = 'ML':
+        if type_of_line == 'ML':
             t = game_time
         else:
             t = timestamp
