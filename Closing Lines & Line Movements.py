@@ -61,7 +61,7 @@ def line_movement_soup(soup, game_date, driver, game_half):
     # Pitcher_Names to pass to line movement file
     A_pit_list = []
     H_pit_list = []
-    all_pit_info = sou*p.find_all('div', attrs={'class': 'el-div eventLine-team'})
+    all_pit_info = soup.find_all('div', attrs={'class': 'el-div eventLine-team'})
     for ngames in range(len(all_pit_info)):
         A_pit_info  = all_pit_info[ngames].find_all('div')[1].get_text().strip()
         H_pit_info  = all_pit_info[ngames].find_all('div')[2].get_text().strip()
@@ -72,8 +72,8 @@ def line_movement_soup(soup, game_date, driver, game_half):
 
     eventlines = soup.find_all('div', {'class': 'el-div eventLine-book'})
     for num in range(len(eventlines)):
-        a_pit_name = A_pit_list[num//10]
-        h_pit_name = H_pit_list[num//10]
+        a_pit_name = A_pit_list[num // 10]
+        h_pit_name = H_pit_list[num // 10]
 
         eventcode = eventlines[num]
         eventid = eventcode['id']
