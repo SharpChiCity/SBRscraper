@@ -45,13 +45,8 @@ def soup_url(type_of_line, tdate=str(date.today()).replace('-', ''), driver=None
         # ML, total, 1H, 1Htotal
         soup_big = BeautifulSoup(requests.get(url).text, 'html.parser')
         soup = soup_big.find_all('div', id='OddsGridModule_3')[0]
-        game_time = soup.find_all('div', attrs={'class': 'el-div eventLine-time'})[i].find_all('div')[0].get_text().strip()
-        if type_of_line == 'ML':
-            t = game_time
-        else:
-            t = timestamp
 
-    return soup, t
+    return soup, timestamp
 
 
 def line_movement_soup(soup, game_date, driver, game_half):
@@ -128,7 +123,7 @@ def get_line_move_data(soup,game_date,game_half,book_name,a_pit_name,h_pit_name,
             line_change_list.extend([line, odds])
         else: # to only grab moneyline
             line = ''
-            odds = row_data[ha].get_text()
+-            odds = row_data[ha].get_text()
             odds_trimmed = odds[odds.find('+') if odds.find('+') > 0 else odds.find('-'):]
             line_change_list.extend([line, odds_trimmed])
 
@@ -224,7 +219,7 @@ def parse_and_write_data(soup, date, time_of_move=None, not_ML=True):
         A = []
         H = []
         print(str(i + 1) +'/' + str(number_of_games))
-        # game_time =             soup.find_all('div', attrs={'class': 'el-div eventLine-time'})[i].find_all('div')[0].get_text().strip()
+        game_time =             soup.find_all('div', attrs={'class': 'el-div eventLine-time'})[i].find_all('div')[0].get_text().strip()
 
         info_A =                soup.find_all('div', attrs={'class': 'el-div eventLine-team'})[i].find_all('div')[0].get_text().strip()
         hyphen_A =              info_A.find('-')
@@ -257,7 +252,7 @@ def parse_and_write_data(soup, date, time_of_move=None, not_ML=True):
         team_A = team_name_check(team_A)
 
         A.append(str(date) + '_' + team_A.replace(u'\xa0', ' ') + '_' + team_H.replace(u'\xa0', ' '))
-        A.extend([date, time_of_move, 'away', team_A, pitcher_A, hand_A, team_H, pitcher_H, hand_H])
+        A.extend([date, game_time, 'away', team_A, pitcher_A, hand_A, team_H, pitcher_H, hand_H])
 
         # Account for runline and totals. Usually come in format '7 -110' or '-0.5 -110'.
         # Use these if statements to separate line from odds
@@ -277,7 +272,7 @@ def parse_and_write_data(soup, date, time_of_move=None, not_ML=True):
                       betonline_A_odds])
 
         H.append(str(date) + '_' + team_A.replace(u'\xa0', ' ') + '_' + team_H.replace(u'\xa0', ' '))
-        H.extend([date, time_of_move, 'home', team_H, pitcher_H, hand_H, team_A, pitcher_A, hand_A])
+        H.extend([date, game_time, 'home', team_H, pitcher_H, hand_H, team_A, pitcher_A, hand_A])
         if not_ML:
             # write pinnacle data in list
             H.extend([pinnacle_H_lines, pinnacle_H_odds,
@@ -357,6 +352,7 @@ def main(profile, season, inputdate=str(date.today()).replace('-', '')):
     2) parse_and_write_data: 
     """
     driver = webdriver.Firefox(firefox_profile=profile)
+    # driver = webdriver.Chrome("C:/users/kj/desktop/chromedriver.exe")
 
 
     # store BeautifulSoup info for parsing
@@ -522,6 +518,7 @@ if __name__ == '__main__':
 
     # torexe = os.popen(r'/home/kc/Downloads/tor-browser_en-US/Browser/TorBrowser/Tor/tor.exe')
     profile = FirefoxProfile(r'/home/kc/Downloads/tor-browser_en-US/Browser/TorBrowser/Data/Browser/profile.default')
+    # profile = FirefoxProfile(r'C:/users/kj/Desktop/torbrowser/Browser/TorBrowser/Data/Browser/profile.default')
     profile.set_preference('network.proxy.type', 1)
     profile.set_preference('network.proxy.socks', '127.0.0.1')
     profile.set_preference('network.proxy.socks_port', 9150)
@@ -531,10 +528,6 @@ if __name__ == '__main__':
 
     #
     time.sleep(5)
-    # driver = webdriver.Firefox(profile)
-
-    # driver = webdriver.Chrome("C:/users/kj/desktop/chromedriver.exe")
-    # time.sleep(3)
     # to uitilize a headless driver, download and install phantomjs and use below to open driver instead of above line
     # download link -- http://phantomjs.org/download.html
     # driver = webdriver.PhantomJS(r"C:\Users\Monstar\Python\phantomjs-2.0.0\bin\phantomjs.exe")
