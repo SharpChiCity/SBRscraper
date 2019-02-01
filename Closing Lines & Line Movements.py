@@ -392,14 +392,14 @@ def main(driver, season, inputdate=str(date.today()).replace('-', '')):
 
 def write_date(filename, dt, sport='MLB'):
     filename = os.getcwd() + '/SBR_{}_Lines_{}_games.txt'.format(sport, filename)
-    f = open(filename, 'a')
+    f = open(filename, 'a+')
     f.write(dt + '\n')
     f.close()
 
 
 def check_date(dt, sport='MLB'):
     filename = os.getcwd() + '/SBR_{}_Lines_{}_games.txt'.format(sport, 'good')
-    f = open(filename, 'r')
+    f = open(filename, 'r+')
 
     good = f.readlines()
     f.close()
