@@ -46,8 +46,12 @@ def soup_url(type_of_line, tdate=str(date.today()).replace('-', ''), driver=None
         soup_big = BeautifulSoup(requests.get(url).text, 'html.parser')
         soup = soup_big.find_all('div', id='OddsGridModule_3')[0]
         game_time = soup.find_all('div', attrs={'class': 'el-div eventLine-time'})[i].find_all('div')[0].get_text().strip()
+        if type_of_line = 'ML':
+            t = game_time
+        else:
+            t = timestamp
 
-    return soup, game_time
+    return soup, t
 
 
 def line_movement_soup(soup, game_date, driver, game_half):
@@ -253,7 +257,7 @@ def parse_and_write_data(soup, date, time_of_move=None, not_ML=True):
         team_A = team_name_check(team_A)
 
         A.append(str(date) + '_' + team_A.replace(u'\xa0', ' ') + '_' + team_H.replace(u'\xa0', ' '))
-        A.extend([date, game_time, 'away', team_A, pitcher_A, hand_A, team_H, pitcher_H, hand_H])
+        A.extend([date, time_of_move, 'away', team_A, pitcher_A, hand_A, team_H, pitcher_H, hand_H])
 
         # Account for runline and totals. Usually come in format '7 -110' or '-0.5 -110'.
         # Use these if statements to separate line from odds
