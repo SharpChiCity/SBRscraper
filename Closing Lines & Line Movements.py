@@ -123,7 +123,7 @@ def get_line_move_data(soup,game_date,game_half,book_name,a_pit_name,h_pit_name,
             line_change_list.extend([line, odds])
         else: # to only grab moneyline
             line = ''
--            odds = row_data[ha].get_text()
+            odds = row_data[ha].get_text()
             odds_trimmed = odds[odds.find('+') if odds.find('+') > 0 else odds.find('-'):]
             line_change_list.extend([line, odds_trimmed])
 
