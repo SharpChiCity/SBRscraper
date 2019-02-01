@@ -45,8 +45,9 @@ def soup_url(type_of_line, tdate=str(date.today()).replace('-', ''), driver=None
         # ML, total, 1H, 1Htotal
         soup_big = BeautifulSoup(requests.get(url).text, 'html.parser')
         soup = soup_big.find_all('div', id='OddsGridModule_3')[0]
+        game_time = soup.find_all('div', attrs={'class': 'el-div eventLine-time'})[i].find_all('div')[0].get_text().strip()
 
-    return soup, timestamp
+    return soup, game_time
 
 
 def line_movement_soup(soup, game_date, driver, game_half):
@@ -155,7 +156,7 @@ def get_line_move_data(soup,game_date,game_half,book_name,a_pit_name,h_pit_name,
     return df_line_moves
 
 
-def parse_and_write_data(soup, date, time_of_move, not_ML=True):
+def parse_and_write_data(soup, date, time_of_move=None, not_ML=True):
     """
     Parse HTML to gather line data by book
     ML lines are simpler to parse, so we need an option to know which type of
@@ -219,6 +220,7 @@ def parse_and_write_data(soup, date, time_of_move, not_ML=True):
         A = []
         H = []
         print(str(i + 1) +'/' + str(number_of_games))
+        # game_time =             soup.find_all('div', attrs={'class': 'el-div eventLine-time'})[i].find_all('div')[0].get_text().strip()
 
         info_A =                soup.find_all('div', attrs={'class': 'el-div eventLine-team'})[i].find_all('div')[0].get_text().strip()
         hyphen_A =              info_A.find('-')
@@ -251,7 +253,7 @@ def parse_and_write_data(soup, date, time_of_move, not_ML=True):
         team_A = team_name_check(team_A)
 
         A.append(str(date) + '_' + team_A.replace(u'\xa0', ' ') + '_' + team_H.replace(u'\xa0', ' '))
-        A.extend([date, time_of_move, 'away', team_A, pitcher_A, hand_A, team_H, pitcher_H, hand_H])
+        A.extend([date, game_time, 'away', team_A, pitcher_A, hand_A, team_H, pitcher_H, hand_H])
 
         # Account for runline and totals. Usually come in format '7 -110' or '-0.5 -110'.
         # Use these if statements to separate line from odds
@@ -418,6 +420,7 @@ def main(profile, season, inputdate=str(date.today()).replace('-', '')):
         write_df.to_csv(f, index=False, header=False)
 
     driver.close()
+
 
 def write_date(filename, dt, sport='MLB'):
     filename = os.getcwd() + '/SBR_{}_Lines_{}_games.txt'.format(sport, filename)
