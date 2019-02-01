@@ -433,7 +433,7 @@ def check_date(dt, sport='MLB'):
     good = f.readlines()
     f.close()
 
-    if dt in good:
+    if dt in [i.replace('\n', '') for i in good]:
         return True
 
     return False
