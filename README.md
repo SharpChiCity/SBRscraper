@@ -2,14 +2,11 @@
 Script to scrape SBR's betting-odds. Can be tailored for other sports and other books.
 Practical application of this is to accumulate lines of all games (currently for MLB) over time and have yourself an odds database.
 
-# modules needed:
-Socks
-Requests
-BeautifulSoup4
-Pandas
 
 Note: you must either have Tor open when running this code or you must comment out that section of code prior to running.
-
+## Tips for using Tor
+1) install tor
+2) assuming OS is Ubuntu, these instructions worked for getting geckodriver installed: https://askubuntu.com/questions/851401/where-to-find-geckodriver-needed-by-selenium-python-package/863211#863211
 
 # Future TODO's:
 * use the new API to parse out info rather than parsing HTML
