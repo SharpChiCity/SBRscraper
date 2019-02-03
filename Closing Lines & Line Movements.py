@@ -3,6 +3,7 @@
 import requests
 from bs4 import BeautifulSoup
 import datetime
+from datetime import datetime
 from datetime import date
 import time
 from pandas import DataFrame
@@ -48,6 +49,124 @@ def soup_url(type_of_line, tdate=str(date.today()).replace('-', ''), driver=None
 
     return soup, timestamp
 
+
+############################################################
+############################################################
+############################################################
+############################################################
+############################################################
+############################################################
+############################################################
+############################################################
+############################################################
+############################################################
+
+class allGames:
+    def __init__(self):
+        self.games = {}
+
+    def add_game(self, gameInfo):
+        self.games[gameInfo.game['game_id']] = gameInfo
+
+
+class gameInfo:
+    def __init__(self):
+        self.game = {
+            'game_id': '',
+            'game_time': '',
+            'teams': {
+                'home': {},
+                'away': {}
+            }
+        }
+
+    def add_team_info(self, teamInfo, home_away_flag):
+        self.game[home_away_flag] = teamInfo
+
+    def add_game_info(self, raw_game_info):
+        self.game = {**self.game, **raw_game_info}
+
+
+class teamInfo:
+    def __init__(self):
+        self.team_data = {
+            'team_name': '',
+            'starting_pitcher': '',
+            'handedness': '',
+            'final_score': 0,
+            'websites': {}
+        }
+
+    def add_website(self, website):
+        website_name = website.get('website_name')
+        self.team_data['websites'][website_name] = website
+
+    def add_team_data(self, team_data_dict):
+        self.team_data = {**self.team_data, **team_data_dict}
+
+
+class websiteInfo:
+    def __init__(self, website_name):
+        self.website = {
+            'website_name': website_name,
+            'odds': {}
+        }
+
+    def add_odds(self, odds):
+        self.website['odds'] = odds
+
+
+class oddsInfo:
+    """Odds will be defined for a single website"""
+    def __init__(self):
+        self.odds = {
+            'full_game': {
+                'money_line': None,
+                'total_line': None,
+                'total_odds': None,
+                'run_line_line': None,
+                'run_line_odds': None
+            },
+            'first_five': {
+                'money_line': None,
+                'total_line': None,
+                'total_odds': None,
+                'run_line_line': None,
+                'run_line_odds': None
+            }
+        }
+
+    def add_odds(self, bet_length, bet_type, value):
+        self.odds[bet_length][bet_type] = value
+
+
+class everything:
+    def __init__(self):
+        self.obj = {}
+        self.obj['game'] = gameInfo
+
+    def write_game_info(self, gameinfo):
+        self.obj = {**obj, **gameinfo.game}
+
+    def write_team_info(self, home_team, away_team):
+        self.obj.get('teams')[home] = home_team
+        self.obj.get('teams')[away] = away_team
+
+    def write_odds(self, site):
+        self.obj.get('teams').get('websites')[site.website_name] = site
+
+
+
+############################################################
+############################################################
+############################################################
+############################################################
+############################################################
+############################################################
+############################################################
+############################################################
+############################################################
+############################################################
 
 def line_movement_soup(soup, game_date, driver, game_half):
     """ only pull once for 1h and for full game, not 3 times """
@@ -351,8 +470,8 @@ def main(profile, season, inputdate=str(date.today()).replace('-', '')):
         b) the rest are just called via requests
     2) parse_and_write_data: 
     """
-    driver = webdriver.Firefox(firefox_profile=profile)
-    # driver = webdriver.Chrome("C:/users/kj/desktop/chromedriver.exe")
+    # driver = webdriver.Firefox(firefox_profile=profile)
+    driver = webdriver.Chrome("C:/users/kj/desktop/chromedriver.exe")
 
 
     # store BeautifulSoup info for parsing
@@ -517,8 +636,8 @@ if __name__ == '__main__':
     import os
 
     # torexe = os.popen(r'/home/kc/Downloads/tor-browser_en-US/Browser/TorBrowser/Tor/tor.exe')
-    profile = FirefoxProfile(r'/home/kc/Downloads/tor-browser_en-US/Browser/TorBrowser/Data/Browser/profile.default')
-    # profile = FirefoxProfile(r'C:/users/kj/Desktop/torbrowser/Browser/TorBrowser/Data/Browser/profile.default')
+    # profile = FirefoxProfile(r'/home/kc/Downloads/tor-browser_en-US/Browser/TorBrowser/Data/Browser/profile.default')
+    profile = FirefoxProfile(r'C:/users/kj/Desktop/torbrowser/Browser/TorBrowser/Data/Browser/profile.default')
     profile.set_preference('network.proxy.type', 1)
     profile.set_preference('network.proxy.socks', '127.0.0.1')
     profile.set_preference('network.proxy.socks_port', 9150)
